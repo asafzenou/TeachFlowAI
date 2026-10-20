@@ -17,9 +17,7 @@
     "prisma/**",
     "repo-test/**",
     "repos/**",
-    "types/**",
-    "src/index.ts",
-    "src/scratch*.ts"
+    "types/**"
   ],
   "jsxSingleQuote": true,
   "printWidth": 80,

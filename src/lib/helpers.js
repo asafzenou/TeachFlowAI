@@ -8,6 +8,6 @@ export const isDev = () => {
   return false;
 };
 
-export const handleError = (error: Error) => {
+export const handleError = (error) => {
   console.error(error);
 };

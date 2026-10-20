@@ -10,17 +10,16 @@
   "packageManager": "npm@11.17.0",
   "type": "module",
   "scripts": {
-    "build": "npx tsc -b && npx vite build",
-    "clean": "rm -rf ./dist",
-    "dev:vite": "npx vite serve --port $PORT",
-    "format": "npx oxfmt src",
-    "format:check": "npx oxfmt --check src",
-    "lint": "npx oxlint .",
+    "build": "vite build",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "dev:vite": "vite --port 5173",
+    "format": "oxfmt src api vite.config.js",
+    "format:check": "oxfmt --check src api vite.config.js",
+    "lint": "oxlint .",
     "prebuild": "npm run clean",
     "preview": "npx vite preview",
     "start": "vercel dev --listen 3001",
-    "test": "npm run format:check && npm run lint && npm run typecheck",
-    "typecheck": "npx tsc --noEmit"
+    "test": "npm run format:check && npm run lint"
   },
   "keywords": [],
   "repository": {
@@ -51,9 +50,6 @@
   "devDependencies": {
     "@tailwindcss/typography": "0.5.20",
     "@tailwindcss/vite": "4.3.3",
-    "@types/node": "26.6.5",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "cssnano": "9.9.0",
     "cz-git": "1.14.0",
@@ -61,7 +57,6 @@
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
     "tailwindcss": "4.3.3",
-    "typescript": "6.0.3",
     "vercel": "64.5.0",
     "vite": "8.3.4",
     "vite-plugin-html": "3.2.2",
