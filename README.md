@@ -84,3 +84,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+# TeachFlowAI
+
+## Backend development
+
+Install dependencies with `npm install`, then start the React client and Express API together with `npm run dev`. The client is at `http://localhost:5173`; the API is at `http://localhost:3001` and Vite proxies `/api` requests.
+
+Copy `.env.example` to `.env` only if you need to change local ports/proxy location or add an optional server-side Gemini key. The JSON file `config/app.config.json` is the version-controlled source of application behavior (model, limits, timeouts); it is intentionally not overridden by environment variables. Do not use `VITE_` variables for API keys.
+
+Run backend tests with `npm test`, quality checks with `npm run check`, and a production client build with `npm run build`. Backend architecture, API/SSE contracts, state model, and deployment limitations are documented in [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md).
