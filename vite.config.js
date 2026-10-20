@@ -1,4 +1,4 @@
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -14,7 +14,7 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   appType: 'spa',
@@ -23,8 +23,6 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
     }),
-    react({
-      include: 'src/**/*.tsx',
-    }),
+    react(),
   ],
 });

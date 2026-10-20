@@ -2,8 +2,7 @@ import { FaGithub, FaQuoteLeft } from 'react-icons/fa';
 import useSWR from 'swr';
 
 export default function App() {
-  const fetcher = async (url: string) =>
-    await fetch(url).then((res) => res.json());
+  const fetcher = async (url) => await fetch(url).then((res) => res.json());
 
   const { data, error } = useSWR('/api/sample-endpoint', fetcher, {
     revalidateIfStale: false,

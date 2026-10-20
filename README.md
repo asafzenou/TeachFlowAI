@@ -33,10 +33,33 @@ Deploy to Vercel
 
 ### Local Development
 
-1. Install project dependencies:<br>
-   `npm install`
-1. Run the project locally (build React front-end and serverless functions and serves them at `http://localhost:3000`):<br>
-   `npm start`
+Requires Node.js 24 or newer and npm 11 or newer.
+
+1. Install dependencies: `npm install`.
+2. Start the frontend: `npm run dev:vite`.
+3. Open `http://localhost:5173`.
+
+The frontend uses React, Vite, Tailwind CSS, and JavaScript/JSX. This command
+does not require a Vercel account. If PowerShell blocks `npm.ps1`, use
+`npm.cmd install` and `npm.cmd run dev:vite` instead.
+
+Vite alone does not run the Node.js function in `api/sample-endpoint.js`.
+The example joke request therefore fails in frontend-only development and the
+existing UI displays an error; no mock response is provided.
+
+For the frontend and API together, use `npm start` (Vercel development server at
+`http://localhost:3001`). Vercel authentication and project setup may be required.
+The API remains a Vercel Node.js Function using the existing extensionless route
+`/api/sample-endpoint` and the rewrites in `vercel.json`.
+
+Run `npm test` for formatting and lint checks, `npm run format` to format source,
+and `npm run build` to generate the production frontend in `dist/`.
+`npm run preview` serves that build locally, but does not run the API.
+
+The `@/` alias points to `src/` in both `vite.config.js` and `jsconfig.json`.
+Tailwind uses its Vite plugin and `src/index.css`; shadcn is configured to generate
+JavaScript components. There is no application TypeScript build step. Dependencies
+may still include TypeScript or type declarations for their own tooling.
 
 ## License
 
