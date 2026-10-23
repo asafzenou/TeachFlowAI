@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 
 import { appConfig } from '../config/index.js';
 import { ApiError } from '../errors.js';
+import { logStage } from '../logger.js';
 
 const require = createRequire(import.meta.url);
 const SUPPORTED = new Set(['text/plain', 'application/pdf']);
@@ -22,7 +23,10 @@ function chunksFor(text, page) {
   }
   return chunks;
 }
-export async function processDocument(file) {
+export async function processDocument(
+  file,
+  context = { operation: 'document-processing' }
+) {
   if (!file) {
     throw new ApiError(400, 'MISSING_FILE', 'Please upload a PDF or TXT file.');
   }
@@ -44,6 +48,7 @@ export async function processDocument(file) {
   let pages;
   if (ext === 'pdf' || file.mimetype === 'application/pdf') {
     try {
+      logStage(context, 'PDF_PARSING_STARTED');
       const { PDFParse } = require('pdf-parse');
       const parser = new PDFParse({ data: file.buffer });
       const result = await parser.getText();
@@ -52,11 +57,16 @@ export async function processDocument(file) {
         text: page.text,
         page: i + 1,
       })) || [{ text: result.text, page: 1 }];
-    } catch {
+      logStage(context, 'PDF_PARSING_COMPLETED', { pageCount: pages.length });
+    } catch (cause) {
+      logStage(context, 'PDF_PARSING_FAILED', {
+        rootCause: 'PDF_EXTRACTION_FAILED',
+      });
       throw new ApiError(
         422,
         'PDF_EXTRACTION_FAILED',
-        'This PDF could not be read. Image-only/scanned PDFs need OCR.'
+        'This PDF could not be read. Image-only/scanned PDFs need OCR.',
+        { cause, stage: 'PDF_PARSING' }
       );
     }
   } else {
@@ -77,6 +87,10 @@ export async function processDocument(file) {
     .flatMap(({ text, page }) => chunksFor(text, page))
     .filter(({ text }) => text.length > 0)
     .map((chunk, index) => ({ id: `chunk_${index + 1}`, ...chunk }));
+  logStage(context, 'DOCUMENT_CHUNKING_COMPLETED', {
+    pageCount: pages.length,
+    sourceCount: sources.length,
+  });
   return {
     sources,
     coverage: `All extractable text was chunked. Files are limited to ${appConfig.document.maxFileBytes} bytes.`,

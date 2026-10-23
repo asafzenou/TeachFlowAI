@@ -1,40 +1,49 @@
-# Teach Me This File
+# TeachFlowAI
 
-Teach Me This File turns a PDF or TXT document into a grounded, interactive AI lesson. Teachers provide natural-language teaching instructions; students learn through a source-aware tutor that advances only after backend-validated understanding.
+TeachFlowAI turns a PDF or TXT document into a grounded, interactive AI lesson. Teachers provide teaching instructions; a source-aware tutor guides the student and advances only after validated understanding.
 
-## Project structure
+## Stack and architecture
 
-- `frontend/` — React/Vite application; browser source lives in `frontend/src/` and its Vite entry document is `frontend/index.html`.
-- `api/` — Vercel Serverless Function entry points.
-- `backend/agents/` — lesson planning and tutoring AI orchestration.
+React 19, Vite, Tailwind, Node/Express-compatible Vercel Functions, Gemini (`@google/genai`), SSE, Zod, and in-memory document processing.
+
+- `frontend/` — React lesson workspace and SSE client.
+- `api/` — Vercel function entry points.
+- `backend/agents/` — lesson planner and tutor orchestration.
 - `backend/services/` — Gemini, document extraction, and source retrieval.
-- `backend/lesson/` — server-authoritative lesson and progress state.
-- `backend/routes/` — HTTP handlers shared by local Express and Vercel Functions.
-- `config/` — version-controlled, non-secret application limits and defaults.
+- `backend/lesson/` — explicit lesson/progress state and transition validation.
 
-## Run locally
+Tutor prose uses Gemini's native `generateContentStream`, so text arrives incrementally. Evaluation/progress are produced separately as validated JSON; progress is sent only after the text stream completes. Browser cancellation closes the SSE request, aborts the provider stream, and prevents progress updates.
+
+Documents are chunked with page references. Planning receives a bounded representative context (first/middle/last, then sequential fill); each tutoring turn receives only the relevant planned sources within a context budget.
+
+## Local setup
 
 Requires Node.js 24+ and npm 11+.
 
-1. Install dependencies: `npm install`
-2. Copy `.env.example` to `.env` and set `GEMINI_API_KEY` for a local backend fallback. Do not use `VITE_` variables for keys.
-3. Start the React client and Express API: `npm run dev`
-4. Open `http://localhost:5173`
+1. Copy `.env.example` to `.env` and set `GEMINI_API_KEY` for the local backend fallback.
+2. Run `npm.cmd install` (PowerShell may require `.cmd` because of execution policy).
+3. Run `npm.cmd run dev`, then open `http://localhost:5173`.
 
-You can instead enter a Gemini key in the in-app settings. It remains in browser memory only and is submitted directly to the existing backend on lesson requests.
+The in-app key setting is browser-memory only and is sent to the existing backend per request. Never put a key in `VITE_` variables, source control, logs, or browser persistence.
+
+## Logging
+
+Backend logging is enabled by default. `npm.cmd run dev` emits newline-delimited JSON records with a timestamp, request ID, operation, stage, response status, and duration. It records request lifecycle, PDF parsing/chunking, planning, Gemini calls, JSON validation, tutor streaming, progress, and safe error classifications. It never records API keys, credentials, document content, prompts, response text, or individual stream tokens. Set `LOG_LEVEL=debug` only when additional safe diagnostics are needed.
 
 ## Commands
 
-- `npm run dev` — Vite client and local Express API
-- `npm test` — backend tests
-- `node --test frontend/src/**/*.test.js` — frontend utility tests
-- `npm run check` — formatting and lint checks
-- `npm run build` — production Vite build
+- `npm.cmd test` — unit tests.
+- `npm.cmd run check` — formatting and lint checks.
+- `npm.cmd run build` — production frontend build.
 
-## Backend contract
+## API and deployment
 
-The frontend uses `POST /api/lesson/create` for multipart uploads and `POST /api/lesson/chat` for POST-based SSE tutoring. The server accepts PDF/TXT files up to 4 MB, and supports text-extractable PDFs only. Full backend contracts are in [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md); frontend implementation details and diagrams are in [frontend/src/FRONTEND_ARCHITECTURE.md](frontend/src/FRONTEND_ARCHITECTURE.md).
+`POST /api/lesson/create` accepts a multipart PDF/TXT upload (maximum 4 MB). `POST /api/lesson/chat` is a POST-based SSE response. Text-extractable PDFs are supported; scanned/image-only PDFs return an OCR guidance error.
 
-## Deployment
+Deploy to Vercel with `GEMINI_API_KEY` set in Project Settings when the server supplies a key. The configured serverless duration is 60 seconds. Uploads are parsed in memory, no temporary files are created, and no deployment has been claimed as tested here. Verify a real-key streamed response after deployment, since streaming behavior can depend on the chosen Vercel runtime/plan.
 
-Deploy this repository to Vercel. The Vite frontend is built into `dist`, and files in `api/` are deployed as Node.js Serverless Functions. Set `GEMINI_API_KEY` in Vercel Project Settings when the server should supply the key; it is never bundled into the frontend.
+## Known limitations
+
+- No OCR for scanned PDFs.
+- Lesson state is client-held for this MVP; there is no cross-device persistence.
+- Provider cancellation stops the local request, but usage already accepted by Gemini may still be charged.

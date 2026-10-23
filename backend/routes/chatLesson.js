@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { tutorTurn } from '../agents/tutorAgent.js';
+import { evaluateTutorTurn, streamTutorMessage } from '../agents/tutorAgent.js';
 import { appConfig, environment } from '../config/index.js';
 import { ApiError, sendError } from '../errors.js';
 import { publicProgress } from '../lesson/lessonState.js';
@@ -8,6 +8,7 @@ import {
   validateClientState,
   applyEvaluation,
 } from '../lesson/progressManager.js';
+import { logFailure, logStage } from '../logger.js';
 import { sourcesForStep } from '../services/sourceRetriever.js';
 const Request = z
   .object({
@@ -39,9 +40,17 @@ function event(res, name, data) {
   res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 export async function chatLesson(req, res) {
-  let cancelled = false;
-  req.on('close', () => {
-    cancelled = true;
+  const requestId = req.requestId;
+  const context = { requestId, operation: 'lesson-chat' };
+  const controller = new AbortController();
+  let responseFinished = false;
+  res.on('finish', () => {
+    responseFinished = true;
+  });
+  res.on('close', () => {
+    if (!responseFinished) {
+      controller.abort();
+    }
   });
   try {
     const apiKey = req.body?.apiKey?.trim() || environment.geminiApiKey;
@@ -53,6 +62,7 @@ export async function chatLesson(req, res) {
       );
     }
     const input = Request.parse(req.body);
+    logStage(context, 'PROGRESS_STATE_VALIDATION_STARTED');
     const state = validateClientState(input.lessonState);
     if (state.lessonId !== input.lessonId) {
       throw new ApiError(
@@ -61,6 +71,7 @@ export async function chatLesson(req, res) {
         'The lesson identifier does not match the state.'
       );
     }
+    logStage(context, 'PROGRESS_STATE_VALIDATION_COMPLETED');
     res.status(200).set({
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
@@ -71,7 +82,8 @@ export async function chatLesson(req, res) {
       state.sources,
       state.plan.steps[state.currentStep]
     );
-    const result = await tutorTurn({
+    logStage(context, 'TUTOR_EVALUATION_STARTED');
+    const result = await evaluateTutorTurn({
       state,
       message: input.message,
       history: input.conversationHistory,
@@ -79,15 +91,41 @@ export async function chatLesson(req, res) {
       model: input.model,
       sources,
       start: input.start,
+      requestId,
     });
-    if (cancelled) {
+    logStage(context, 'TUTOR_EVALUATION_COMPLETED');
+    if (controller.signal.aborted) {
       return res.end();
     }
-    for (const text of result.message.match(/.{1,180}/gs) || []) {
+    const stream = streamTutorMessage({
+      state,
+      message: input.message,
+      history: input.conversationHistory,
+      apiKey,
+      model: input.model,
+      sources,
+      start: input.start,
+      evaluation: result,
+      signal: controller.signal,
+      requestId,
+    });
+    logStage(context, 'TUTOR_STREAM_STARTED');
+    for await (const text of stream) {
+      if (controller.signal.aborted) {
+        return res.end();
+      }
       event(res, 'delta', { text });
+    }
+    logStage(context, 'TUTOR_STREAM_COMPLETED');
+    if (controller.signal.aborted) {
+      return res.end();
     }
     event(res, 'sources', { sourceIds: result.sourceIds });
     const updated = applyEvaluation(state, result);
+    logStage(context, 'PROGRESS_UPDATE_COMPLETED', {
+      status: updated.status,
+      currentStep: updated.currentStep,
+    });
     event(res, 'progress', {
       progress: publicProgress(updated),
       lessonState: updated,
@@ -96,6 +134,7 @@ export async function chatLesson(req, res) {
     res.end();
   } catch (error) {
     if (res.headersSent) {
+      logFailure(context, error);
       event(res, 'error', {
         error: {
           code: error.code || 'GENERATION_FAILED',
@@ -104,7 +143,7 @@ export async function chatLesson(req, res) {
       });
       res.end();
     } else {
-      sendError(res, error);
+      sendError(res, error, req);
     }
   }
 }

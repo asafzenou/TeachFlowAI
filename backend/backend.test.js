@@ -14,7 +14,10 @@ import {
   validateClientState,
 } from './lesson/progressManager.js';
 import { processDocument } from './services/documentProcessor.js';
-import { validateSourceIds } from './services/sourceRetriever.js';
+import {
+  sourcesForPlanning,
+  validateSourceIds,
+} from './services/sourceRetriever.js';
 
 const state = {
   lessonId: '00000000-0000-4000-8000-000000000000',
@@ -36,6 +39,7 @@ const state = {
 test('health endpoint works', async () => {
   const res = await request(createApp()).get('/api/health');
   assert.deepEqual(res.body, { status: 'ok', service: 'TeachFlowAI' });
+  assert.match(res.headers['x-request-id'], /^[0-9a-f-]{36}$/i);
 });
 test('application configuration is valid and environment defaults are safe', () => {
   assert.equal(appConfig.ai.defaultModel, 'gemini-2.5-flash');
@@ -104,6 +108,28 @@ test('correct response advances exactly one step', () => {
   assert.equal(next.currentStep, 1);
   assert.deepEqual(next.completedSteps, [0]);
 });
+test('partial understanding does not advance lesson progress', () => {
+  const next = applyEvaluation(state, {
+    understanding: 'partial',
+    action: 'ask_followup',
+    shouldAdvance: false,
+  });
+  assert.equal(next.currentStep, 0);
+  assert.deepEqual(next.completedSteps, []);
+});
+test('planning context is bounded while retaining page-aware source records', () => {
+  const sources = Array.from({ length: 20 }, (_, index) => ({
+    id: `chunk_${index + 1}`,
+    page: index + 1,
+    text: 'source '.repeat(500),
+  }));
+  const selected = sourcesForPlanning(sources, 3000);
+  assert.ok(
+    selected.reduce((total, source) => total + source.text.length, 0) <= 3000
+  );
+  assert.equal(selected[0].id, 'chunk_1');
+  assert.ok(selected.every((source) => Number.isInteger(source.page)));
+});
 test('invalid source IDs and progress are rejected', () => {
   assert.throws(() => validateSourceIds(['invented'], state.sources), {
     code: 'INVALID_SOURCE_REFERENCE',
@@ -111,4 +137,8 @@ test('invalid source IDs and progress are rejected', () => {
   assert.throws(() => validateClientState({ ...state, currentStep: 10 }), {
     code: 'INVALID_LESSON_STATE',
   });
+  assert.throws(
+    () => validateClientState({ ...state, completedSteps: undefined }),
+    { code: 'INVALID_LESSON_STATE' }
+  );
 });

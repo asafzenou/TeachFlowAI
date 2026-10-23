@@ -4,6 +4,7 @@ import { planLesson } from '../agents/lessonPlanner.js';
 import { appConfig, environment } from '../config/index.js';
 import { ApiError, sendError } from '../errors.js';
 import { createLessonState, publicProgress } from '../lesson/lessonState.js';
+import { logStage } from '../logger.js';
 import { processDocument } from '../services/documentProcessor.js';
 const Request = z.object({
   teacherPrompt: z
@@ -15,6 +16,8 @@ const Request = z.object({
   model: z.string().optional(),
 });
 export async function createLesson(req, res) {
+  const requestId = req.requestId;
+  const context = { requestId, operation: 'lesson-create' };
   try {
     const apiKey = req.body?.apiKey?.trim() || environment.geminiApiKey;
     if (!apiKey) {
@@ -25,8 +28,16 @@ export async function createLesson(req, res) {
       );
     }
     const input = Request.parse(req.body);
-    const { sources, coverage } = await processDocument(req.file);
-    const plan = await planLesson({ ...input, apiKey, sources });
+    logStage(context, 'DOCUMENT_PROCESSING_STARTED');
+    const { sources, coverage } = await processDocument(req.file, context);
+    logStage(context, 'DOCUMENT_PROCESSING_COMPLETED', {
+      sourceCount: sources.length,
+    });
+    logStage(context, 'LESSON_PLANNING_STARTED');
+    const plan = await planLesson({ ...input, apiKey, sources, requestId });
+    logStage(context, 'LESSON_PLANNING_COMPLETED', {
+      stepCount: plan.steps.length,
+    });
     const state = createLessonState({
       teacherPrompt: input.teacherPrompt,
       plan,
@@ -41,6 +52,6 @@ export async function createLesson(req, res) {
       coverage,
     });
   } catch (error) {
-    sendError(res, error);
+    sendError(res, error, req);
   }
 }
