@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
     throw new Error('BACKEND_PROXY_TARGET must be a valid URL.');
   }
   return {
-    root: 'src',
+    root: 'frontend',
     build: {
       outDir: '../dist',
       emptyOutDir: true,
@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
     publicDir: '../public',
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@': fileURLToPath(new URL('./frontend/src', import.meta.url)),
       },
     },
     appType: 'spa',

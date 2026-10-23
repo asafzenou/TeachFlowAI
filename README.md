@@ -4,7 +4,7 @@ Teach Me This File turns a PDF or TXT document into a grounded, interactive AI l
 
 ## Project structure
 
-- `src/` — React UI, lesson API client, chat streaming hook, and browser-only state.
+- `frontend/` — React/Vite application; browser source lives in `frontend/src/` and its Vite entry document is `frontend/index.html`.
 - `api/` — Vercel Serverless Function entry points.
 - `backend/agents/` — lesson planning and tutoring AI orchestration.
 - `backend/services/` — Gemini, document extraction, and source retrieval.
@@ -27,13 +27,13 @@ You can instead enter a Gemini key in the in-app settings. It remains in browser
 
 - `npm run dev` — Vite client and local Express API
 - `npm test` — backend tests
-- `node --test src/**/*.test.js` — frontend utility tests
+- `node --test frontend/src/**/*.test.js` — frontend utility tests
 - `npm run check` — formatting and lint checks
 - `npm run build` — production Vite build
 
 ## Backend contract
 
-The frontend uses `POST /api/lesson/create` for multipart uploads and `POST /api/lesson/chat` for POST-based SSE tutoring. The server accepts PDF/TXT files up to 4 MB, and supports text-extractable PDFs only. Full backend contracts are in [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md); frontend implementation details and diagrams are in [src/FRONTEND_ARCHITECTURE.md](src/FRONTEND_ARCHITECTURE.md).
+The frontend uses `POST /api/lesson/create` for multipart uploads and `POST /api/lesson/chat` for POST-based SSE tutoring. The server accepts PDF/TXT files up to 4 MB, and supports text-extractable PDFs only. Full backend contracts are in [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md); frontend implementation details and diagrams are in [frontend/src/FRONTEND_ARCHITECTURE.md](frontend/src/FRONTEND_ARCHITECTURE.md).
 
 ## Deployment
 

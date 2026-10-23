@@ -2,14 +2,14 @@
   "compilerOptions": {
     "paths": {
       "@/*": [
-        "./src/*"
+        "./frontend/src/*"
       ]
     },
     "jsx": "react-jsx"
   },
   "include": [
-    "src/**/*.js",
-    "src/**/*.jsx",
+    "frontend/src/**/*.js",
+    "frontend/src/**/*.jsx",
     "api/**/*.js",
     "vite.config.js"
   ]
