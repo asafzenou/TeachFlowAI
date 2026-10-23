@@ -28,7 +28,7 @@ The in-app key setting is browser-memory only and is sent to the existing backen
 
 ## Logging
 
-Backend logging is enabled by default. `npm.cmd run dev` emits newline-delimited JSON records with a timestamp, request ID, operation, stage, response status, and duration. It records request lifecycle, PDF parsing/chunking, planning, Gemini calls, JSON validation, tutor streaming, progress, and safe error classifications. It never records API keys, credentials, document content, prompts, response text, or individual stream tokens. Set `LOG_LEVEL=debug` only when additional safe diagnostics are needed.
+Backend logging is enabled by default. `npm.cmd run dev` emits newline-delimited JSON records with a timestamp, request ID, operation, stage, response status, and duration. It records request lifecycle, PDF parsing/chunking, planning, Gemini calls, JSON validation, tutor streaming, progress, and safe error classifications. It never records API keys, credentials, document content, prompts, response text, or individual stream tokens.
 
 ## Commands
 
@@ -38,14 +38,20 @@ Backend logging is enabled by default. `npm.cmd run dev` emits newline-delimited
 
 ## API and deployment
 
-`POST /api/lesson/create` accepts a multipart PDF/TXT upload (maximum 4 MB). `POST /api/lesson/chat` is a POST-based SSE response. Text-extractable PDFs are supported; scanned/image-only PDFs return an OCR guidance error.
+`POST /api/lesson/create` accepts a multipart PDF/TXT upload of up to 2 MB. Multipart fields and extractable text are also bounded: the lesson must contain no more than 1 MiB of extracted UTF-8 text. This leaves headroom below Vercel's Function request limit for multipart framing and keeps the client-held lesson state practical. Text-extractable PDFs are supported; scanned/image-only PDFs return an OCR guidance error.
+
+`POST /api/lesson/chat` is a POST-based SSE response. It accepts up to 3 MB of JSON because the stateless design sends the bounded lesson state (including source passages) on each turn. Lesson-creation responses are checked against a 2 MiB JSON ceiling and contain one canonical `lessonState`, rather than duplicate top-level plan/source copies.
 
 Local interactive API documentation is available at `http://localhost:3001/docs`; its OpenAPI document is at `http://localhost:3001/openapi.json`. On Vercel, use `/api/docs` and `/api/openapi.json`.
 
-Deploy to Vercel with `GEMINI_API_KEY` set in Project Settings when the server supplies a key. The configured serverless duration is 60 seconds. Uploads are parsed in memory, no temporary files are created, and no deployment has been claimed as tested here. Verify a real-key streamed response after deployment, since streaming behavior can depend on the chosen Vercel runtime/plan.
+Deploy the repository root to Vercel; `npm run build` creates the Vite frontend in `dist`, and the `api/` entry points deploy as Functions importing the same backend app. The SPA rewrite excludes `/api`, so API Functions remain routable. Set `GEMINI_API_KEY` in Vercel Project Settings only when the server should provide the fallback key. Do not set it as a `VITE_` variable or commit it to `.env`.
+
+The configured serverless duration is 60 seconds. Uploads are parsed in memory and no temporary files are created. This repository has not been deployed by this hardening pass. Before production, verify a real-key streamed response and cancellation on the target Vercel plan, since Function streaming and request limits are platform-plan behavior.
 
 ## Known limitations
 
 - No OCR for scanned PDFs.
 - Lesson state is client-held for this MVP; there is no cross-device persistence.
+- Client-held state is validated but not signed; a determined client can alter lesson content/progress. Do not use it as an authoritative record.
+- Documents that expand beyond 1 MiB of extractable text are rejected, even when the uploaded PDF/TXT is under 2 MB.
 - Provider cancellation stops the local request, but usage already accepted by Gemini may still be charged.

@@ -24,7 +24,7 @@ function TeachFlowApp() {
           apiKey,
           signal: creationController.current.signal,
         });
-        setLesson(result);
+        setLesson(result.lessonState);
       } catch (error) {
         if (error.name !== 'AbortError') {
           setCreationError(error.message);

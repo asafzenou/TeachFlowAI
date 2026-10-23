@@ -34,7 +34,7 @@ export async function processDocument(
     throw new ApiError(
       413,
       'FILE_TOO_LARGE',
-      'The file must be 4 MB or smaller.'
+      'The file must be 2 MB or smaller.'
     );
   }
   const ext = file.originalname?.split('.').pop()?.toLowerCase();
@@ -81,6 +81,15 @@ export async function processDocument(
       422,
       'EMPTY_DOCUMENT',
       'The document has no extractable text. Scanned PDFs need OCR.'
+    );
+  }
+  if (
+    Buffer.byteLength(raw, 'utf8') > appConfig.document.maxExtractedTextBytes
+  ) {
+    throw new ApiError(
+      413,
+      'EXTRACTED_TEXT_TOO_LARGE',
+      'The document contains too much extractable text for an in-browser lesson.'
     );
   }
   const sources = pages

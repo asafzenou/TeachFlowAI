@@ -12,7 +12,7 @@ export const historyForApi = (messages) =>
     .map(({ role, content }) => ({ role, content }))
     .slice(-20);
 
-export function useChatStream({ lesson, apiKey, onProgress }) {
+export function useChatStream({ lessonState, apiKey, onProgress }) {
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
@@ -48,8 +48,8 @@ export function useChatStream({ lesson, apiKey, onProgress }) {
         await chatLesson({
           signal: requestController.signal,
           body: {
-            lessonId: lesson.lessonId,
-            lessonState: lesson.lessonState,
+            lessonId: lessonState.lessonId,
+            lessonState,
             conversationHistory: historyForApi(priorMessages),
             ...(start ? { start: true } : { message: message.trim() }),
             ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
@@ -122,7 +122,7 @@ export function useChatStream({ lesson, apiKey, onProgress }) {
         }
       }
     },
-    [apiKey, isStreaming, lesson, messages, onProgress]
+    [apiKey, isStreaming, lessonState, messages, onProgress]
   );
   return {
     messages,

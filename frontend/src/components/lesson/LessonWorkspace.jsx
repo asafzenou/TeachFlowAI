@@ -17,13 +17,12 @@ export function LessonWorkspace({ initialLesson, apiKey, onExit }) {
   const [lesson, setLesson] = useState(initialLesson);
   const [showPlan, setShowPlan] = useState(false);
   const [source, setSource] = useState(null);
-  const updateProgress = (update) =>
-    setLesson((current) => ({
-      ...current,
-      progress: update.progress,
-      lessonState: update.lessonState,
-    }));
-  const chat = useChatStream({ lesson, apiKey, onProgress: updateProgress });
+  const updateProgress = (update) => setLesson(update.lessonState);
+  const chat = useChatStream({
+    lessonState: lesson,
+    apiKey,
+    onProgress: updateProgress,
+  });
   const sourceMap = useMemo(
     () => new Map(lesson.sources.map((item) => [item.id, item])),
     [lesson.sources]
@@ -42,7 +41,7 @@ export function LessonWorkspace({ initialLesson, apiKey, onExit }) {
         </button>
         <div className='flex items-center gap-3'>
           <span className='hidden text-sm text-slate-500 sm:inline'>
-            {lesson.progress.status === 'completed'
+            {lesson.status === 'completed'
               ? 'Lesson complete'
               : 'Interactive lesson'}
           </span>
@@ -83,19 +82,17 @@ export function LessonWorkspace({ initialLesson, apiKey, onExit }) {
                 <X size={18} />
               </button>
             </div>
-            <Progress progress={lesson.progress} steps={lesson.plan.steps} />
+            <Progress progress={lesson} steps={lesson.plan.steps} />
             <ol className='mt-6 space-y-1'>
               {lesson.plan.steps.map((step, index) => (
                 <li
                   key={`${step.objective}-${index}`}
-                  className={`flex gap-3 rounded-xl px-3 py-3 text-sm ${index === lesson.progress.currentStep && lesson.progress.status !== 'completed' ? 'bg-indigo-50 text-indigo-950' : 'text-slate-600'}`}
+                  className={`flex gap-3 rounded-xl px-3 py-3 text-sm ${index === lesson.currentStep && lesson.status !== 'completed' ? 'bg-indigo-50 text-indigo-950' : 'text-slate-600'}`}
                 >
                   <span
-                    className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs ${lesson.progress.completedSteps.includes(index) ? 'bg-emerald-500 text-white' : index === lesson.progress.currentStep ? 'bg-indigo-600 text-white' : 'border border-slate-300'}`}
+                    className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs ${lesson.completedSteps.includes(index) ? 'bg-emerald-500 text-white' : index === lesson.currentStep ? 'bg-indigo-600 text-white' : 'border border-slate-300'}`}
                   >
-                    {lesson.progress.completedSteps.includes(index)
-                      ? '✓'
-                      : index + 1}
+                    {lesson.completedSteps.includes(index) ? '✓' : index + 1}
                   </span>
                   <span>
                     <b className='block font-medium'>{step.objective}</b>
@@ -113,7 +110,7 @@ export function LessonWorkspace({ initialLesson, apiKey, onExit }) {
           <div className='mx-auto flex h-[calc(100vh-105px)] max-w-3xl flex-col rounded-2xl border border-slate-200 bg-white shadow-sm'>
             <ChatPanel
               chat={chat}
-              completed={lesson.progress.status === 'completed'}
+              completed={lesson.status === 'completed'}
               sourceMap={sourceMap}
               onSource={setSource}
             />

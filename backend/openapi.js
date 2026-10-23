@@ -37,9 +37,13 @@ export const openApiDocument = {
           },
         },
         responses: {
-          '201': { description: 'Lesson plan and client-held lesson state' },
+          '201': {
+            description:
+              'Canonical client-held lesson state (response limited to 2 MiB).',
+          },
           '400': { $ref: '#/components/responses/RequestError' },
           '401': { $ref: '#/components/responses/RequestError' },
+          '413': { $ref: '#/components/responses/RequestError' },
           '422': { $ref: '#/components/responses/RequestError' },
           '429': { $ref: '#/components/responses/RequestError' },
           '502': { $ref: '#/components/responses/RequestError' },
@@ -50,7 +54,7 @@ export const openApiDocument = {
       post: {
         summary: 'Generate one streamed tutoring turn',
         description:
-          'Returns server-sent events: delta, sources, progress, done, or error.',
+          'Returns server-sent events: delta, sources, progress, done, or error. JSON request body is limited to 3 MB.',
         requestBody: {
           required: true,
           content: {
@@ -81,6 +85,7 @@ export const openApiDocument = {
           },
           '400': { $ref: '#/components/responses/RequestError' },
           '401': { $ref: '#/components/responses/RequestError' },
+          '413': { $ref: '#/components/responses/RequestError' },
         },
       },
     },

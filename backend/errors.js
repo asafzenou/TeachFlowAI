@@ -14,9 +14,6 @@ export class ApiError extends Error {
     }
   }
 }
-export const fail = (status, code, message) => {
-  throw new ApiError(status, code, message);
-};
 export function sendError(res, error, req) {
   if (error?.name === 'ZodError') {
     logger.warn('request-validation', {

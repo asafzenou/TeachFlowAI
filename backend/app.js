@@ -11,7 +11,14 @@ import { createLesson } from './routes/createLesson.js';
 import { health } from './routes/health.js';
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: appConfig.document.maxFileBytes, files: 1 },
+  // Keep the complete multipart payload well below Vercel's 4.5 MB limit.
+  limits: {
+    fileSize: appConfig.document.maxFileBytes,
+    fieldSize: 16 * 1024,
+    files: 1,
+    fields: 3,
+    parts: 4,
+  },
 });
 export function createApp() {
   const app = express();
@@ -55,20 +62,36 @@ export function createApp() {
     chatLesson
   );
   app.use((error, req, res, _next) => {
-    if (
-      error instanceof multer.MulterError &&
-      error.code === 'LIMIT_FILE_SIZE'
-    ) {
+    if (error instanceof multer.MulterError) {
       logger.warn('http-request', {
         requestId: req.requestId,
         stage: 'UPLOAD_VALIDATION',
-        errorCode: 'FILE_TOO_LARGE',
-        rootCause: 'FILE_SIZE_LIMIT',
+        errorCode:
+          error.code === 'LIMIT_FILE_SIZE'
+            ? 'FILE_TOO_LARGE'
+            : 'REQUEST_TOO_LARGE',
+        rootCause: error.code,
       });
       return res.status(413).json({
         error: {
-          code: 'FILE_TOO_LARGE',
-          message: 'The file must be 4 MB or smaller.',
+          code:
+            error.code === 'LIMIT_FILE_SIZE'
+              ? 'FILE_TOO_LARGE'
+              : 'REQUEST_TOO_LARGE',
+          message:
+            error.code === 'LIMIT_FILE_SIZE'
+              ? 'The file must be 2 MB or smaller.'
+              : 'The upload request is too large.',
+          requestId: req.requestId,
+        },
+      });
+    }
+    if (error?.type === 'entity.too.large') {
+      return res.status(413).json({
+        error: {
+          code: 'REQUEST_TOO_LARGE',
+          message: 'The chat request is too large.',
+          requestId: req.requestId,
         },
       });
     }

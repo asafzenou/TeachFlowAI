@@ -14,6 +14,7 @@ import {
   applyEvaluation,
   validateClientState,
 } from './lesson/progressManager.js';
+import { assertLessonResponseSize, jsonByteLength } from './responseSize.js';
 import { processDocument } from './services/documentProcessor.js';
 import {
   sourcesForPlanning,
@@ -77,6 +78,14 @@ test('lesson creation returns a correlatable error without an API key', async ()
   assert.equal(res.body.error.code, 'MISSING_API_KEY');
   assert.match(res.body.error.requestId, /^[0-9a-f-]{36}$/i);
 });
+test('chat rejects a JSON body beyond its serverless-safe limit', async () => {
+  const res = await request(createApp())
+    .post('/api/lesson/chat')
+    .set('Content-Type', 'application/json')
+    .send(JSON.stringify({ padding: 'x'.repeat(3 * 1024 * 1024) }));
+  assert.equal(res.status, 413);
+  assert.equal(res.body.error.code, 'REQUEST_TOO_LARGE');
+});
 test('TXT and Hebrew survive processing', async () => {
   const output = await processDocument({
     originalname: 'lesson.txt',
@@ -108,6 +117,30 @@ test('empty document is rejected', async () => {
         buffer: Buffer.from('  '),
       }),
     { code: 'EMPTY_DOCUMENT' }
+  );
+});
+test('extractable document text is bounded before duplicating it into lesson state', async () => {
+  await assert.rejects(
+    () =>
+      processDocument({
+        originalname: 'large.txt',
+        mimetype: 'text/plain',
+        size: appConfig.document.maxExtractedTextBytes + 1,
+        buffer: Buffer.alloc(appConfig.document.maxExtractedTextBytes + 1, 'a'),
+      }),
+    { code: 'EXTRACTED_TEXT_TOO_LARGE' }
+  );
+});
+test('lesson creation response has an explicit serverless-safe size ceiling', () => {
+  const response = { lessonState: { sources: [{ text: 'brief' }] } };
+  assert.ok(jsonByteLength(response) < appConfig.input.maxLessonResponseBytes);
+  assert.doesNotThrow(() => assertLessonResponseSize(response));
+  assert.throws(
+    () =>
+      assertLessonResponseSize({
+        lessonState: { sources: [{ text: 'x'.repeat(3 * 1024 * 1024) }] },
+      }),
+    { code: 'LESSON_RESPONSE_TOO_LARGE' }
   );
 });
 test('incorrect or malformed evaluation does not advance', () => {

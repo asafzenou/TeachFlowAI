@@ -17,7 +17,12 @@ const AppConfigSchema = z
           .number()
           .int()
           .positive()
-          .max(4 * 1024 * 1024),
+          .max(2 * 1024 * 1024),
+        maxExtractedTextBytes: z
+          .number()
+          .int()
+          .positive()
+          .max(2 * 1024 * 1024),
         chunkSizeCharacters: z.number().int().min(200).max(10000),
         chunkOverlapCharacters: z.number().int().min(0).max(5000),
       })
@@ -34,6 +39,11 @@ const AppConfigSchema = z
       maxStudentMessageCharacters: z.number().int().min(1).max(10000),
       maxConversationMessages: z.number().int().min(1).max(100),
       maxJsonBodyBytes: z.string().regex(/^\d+(kb|mb)$/i),
+      maxLessonResponseBytes: z
+        .number()
+        .int()
+        .positive()
+        .max(3 * 1024 * 1024),
     }),
   })
   .strict();

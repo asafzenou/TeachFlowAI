@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-const LIMIT = 4 * 1024 * 1024;
+const LIMIT = 2 * 1024 * 1024;
 const suggestions = [
   'Teach this to a beginner using simple language.',
   'Use the Socratic method and ask one question at a time.',
@@ -42,7 +42,7 @@ export function SetupPage({
       return;
     }
     if (candidate.size > LIMIT) {
-      setLocalError('This file is larger than the 4 MB limit.');
+      setLocalError('This file is larger than the 2 MB limit.');
       return;
     }
     setLocalError(null);
@@ -110,7 +110,7 @@ export function SetupPage({
             <div>
               <h2 className='text-xl font-semibold'>Build a lesson</h2>
               <p className='mt-1 text-sm text-slate-500'>
-                PDF or TXT · up to 4 MB
+                PDF or TXT · up to 2 MB
               </p>
             </div>
             <div className='flex size-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600'>

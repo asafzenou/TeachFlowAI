@@ -21,7 +21,7 @@ flowchart TD
 
 | Endpoint                  | Request                                                                                                                        | Response used by UI                                                                                        |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `POST /api/lesson/create` | `multipart/form-data`: `file`, `teacherPrompt`, optional `apiKey`, optional `model`                                            | `201 { lessonId, plan, sources, progress, lessonState, coverage }`                                         |
+| `POST /api/lesson/create` | `multipart/form-data`: `file`, `teacherPrompt`, optional `apiKey`, optional `model`                                            | `201 { lessonId, lessonState, coverage }` (the state is the canonical plan, sources, and progress)         |
 | `POST /api/lesson/chat`   | JSON: `lessonId`, `lessonState`, `conversationHistory`, either `start: true` or `message`, optional `apiKey`, optional `model` | SSE: `delta {text}`, `sources {sourceIds}`, `progress {progress, lessonState}`, `done {}`, `error {error}` |
 
 Errors are read from the backend's `{ error: { code, message } }` envelope. The UI sends a key only in create/chat requests and never persists it.

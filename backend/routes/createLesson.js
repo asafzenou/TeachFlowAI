@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { planLesson } from '../agents/lessonPlanner.js';
 import { appConfig, environment } from '../config/index.js';
 import { ApiError, sendError } from '../errors.js';
-import { createLessonState, publicProgress } from '../lesson/lessonState.js';
+import { createLessonState } from '../lesson/lessonState.js';
 import { logStage } from '../logger.js';
+import { assertLessonResponseSize } from '../responseSize.js';
 import { processDocument } from '../services/documentProcessor.js';
 const Request = z.object({
   teacherPrompt: z
@@ -44,14 +45,13 @@ export async function createLesson(req, res) {
       plan,
       sources,
     });
-    res.status(201).json({
+    const response = {
       lessonId: state.lessonId,
-      plan,
-      sources,
-      progress: publicProgress(state),
       lessonState: state,
       coverage,
-    });
+    };
+    assertLessonResponseSize(response);
+    res.status(201).json(response);
   } catch (error) {
     sendError(res, error, req);
   }
