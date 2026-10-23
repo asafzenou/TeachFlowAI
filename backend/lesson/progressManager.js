@@ -69,15 +69,31 @@ export function validateClientState(state) {
       'The lesson progress is inconsistent.'
     );
   }
-  const ids = new Set(state.sources.map((source) => source?.id));
+  const ids = new Set();
   if (
-    ids.size !== state.sources.length ||
+    state.sources.some((source) => {
+      if (
+        !source ||
+        typeof source.id !== 'string' ||
+        !source.id.trim() ||
+        typeof source.text !== 'string' ||
+        !source.text.trim() ||
+        ids.has(source.id)
+      ) {
+        return true;
+      }
+      ids.add(source.id);
+      return false;
+    }) ||
     state.plan.steps.some(
       (step) =>
         typeof step?.id !== 'string' ||
+        !step.id.trim() ||
         !Array.isArray(step.sourceIds) ||
         step.sourceIds.length === 0 ||
-        step.sourceIds.some((id) => !ids.has(id))
+        step.sourceIds.some(
+          (id) => typeof id !== 'string' || !id.trim() || !ids.has(id)
+        )
     )
   ) {
     throw new ApiError(

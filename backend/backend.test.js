@@ -17,6 +17,7 @@ import {
 import { processDocument } from './services/documentProcessor.js';
 import {
   sourcesForPlanning,
+  sourcesForStep,
   validateSourceIds,
 } from './services/sourceRetriever.js';
 
@@ -135,6 +136,22 @@ test('partial understanding does not advance lesson progress', () => {
   assert.equal(next.currentStep, 0);
   assert.deepEqual(next.completedSteps, []);
 });
+test('correct final response completes the lesson without advancing past its final step', () => {
+  const finalStep = {
+    ...state,
+    currentStep: 1,
+    completedSteps: [0],
+    status: 'in_progress',
+  };
+  const completed = applyEvaluation(finalStep, {
+    understanding: 'correct',
+    action: 'advance',
+    shouldAdvance: true,
+  });
+  assert.equal(completed.status, 'completed');
+  assert.equal(completed.currentStep, 1);
+  assert.deepEqual(completed.completedSteps, [0, 1]);
+});
 test('planning context is bounded while retaining page-aware source records', () => {
   const sources = Array.from({ length: 20 }, (_, index) => ({
     id: `chunk_${index + 1}`,
@@ -147,6 +164,12 @@ test('planning context is bounded while retaining page-aware source records', ()
   );
   assert.equal(selected[0].id, 'chunk_1');
   assert.ok(selected.every((source) => Number.isInteger(source.page)));
+});
+test('step context retains a supplied source ID when its passage is truncated', () => {
+  assert.deepEqual(
+    sourcesForStep([{ id: 'chunk_1', text: 'abcdef' }], state.plan.steps[0], 3),
+    [{ id: 'chunk_1', text: 'abc' }]
+  );
 });
 test('planning schema restricts model citations to supplied source IDs', () => {
   const schema = lessonPlanJsonSchema(['chunk_1', 'chunk_2']);
@@ -167,4 +190,36 @@ test('invalid source IDs and progress are rejected', () => {
     () => validateClientState({ ...state, completedSteps: undefined }),
     { code: 'INVALID_LESSON_STATE' }
   );
+  assert.throws(
+    () =>
+      validateSourceIds(
+        ['chunk_1'],
+        [
+          { id: 'chunk_1', text: 'x' },
+          { id: 'chunk_1', text: 'y' },
+        ]
+      ),
+    { code: 'INVALID_SOURCE_REFERENCE' }
+  );
+  assert.throws(
+    () =>
+      validateClientState({ ...state, sources: [{ id: 'chunk_1', text: '' }] }),
+    { code: 'INVALID_LESSON_STATE' }
+  );
+});
+test('completed lessons reject chat requests before generation begins', async () => {
+  const completedState = {
+    ...state,
+    currentStep: 1,
+    completedSteps: [0, 1],
+    status: 'completed',
+  };
+  const res = await request(createApp()).post('/api/lesson/chat').send({
+    lessonId: completedState.lessonId,
+    lessonState: completedState,
+    message: 'One more question',
+    apiKey: 'test-key-never-log-this',
+  });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.error.code, 'LESSON_COMPLETED');
 });

@@ -72,6 +72,13 @@ export async function chatLesson(req, res) {
         'The lesson identifier does not match the state.'
       );
     }
+    if (state.status === 'completed') {
+      throw new ApiError(
+        409,
+        'LESSON_COMPLETED',
+        'This lesson is already completed.'
+      );
+    }
     logStage(context, 'PROGRESS_STATE_VALIDATION_COMPLETED');
     res.status(200).set({
       'Content-Type': 'text/event-stream',
@@ -92,6 +99,7 @@ export async function chatLesson(req, res) {
       model: input.model,
       sources,
       start: input.start,
+      signal: controller.signal,
       requestId,
     });
     logStage(context, 'TUTOR_EVALUATION_COMPLETED');
@@ -134,6 +142,9 @@ export async function chatLesson(req, res) {
     event(res, 'done', {});
     res.end();
   } catch (error) {
+    if (controller.signal.aborted) {
+      return;
+    }
     if (res.headersSent) {
       logFailure(context, error);
       event(res, 'error', {

@@ -2,12 +2,12 @@ import { useCallback, useRef, useState } from 'react';
 
 import { chatLesson } from '../services/lessonApi.js';
 
-const historyForApi = (messages) =>
+export const historyForApi = (messages) =>
   messages
     .filter(
       (message) =>
         message.role === 'student' ||
-        (message.role === 'tutor' && message.complete)
+        (message.role === 'tutor' && message.complete && !message.interrupted)
     )
     .map(({ role, content }) => ({ role, content }))
     .slice(-20);
@@ -42,10 +42,11 @@ export function useChatStream({ lesson, apiKey, onProgress }) {
         },
       ]);
       setIsStreaming(true);
-      controller.current = new AbortController();
+      const requestController = new AbortController();
+      controller.current = requestController;
       try {
         await chatLesson({
-          signal: controller.current.signal,
+          signal: requestController.signal,
           body: {
             lessonId: lesson.lessonId,
             lessonState: lesson.lessonState,
@@ -54,6 +55,12 @@ export function useChatStream({ lesson, apiKey, onProgress }) {
             ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
           },
           onEvent: (type, data) => {
+            if (
+              requestController.signal.aborted ||
+              controller.current !== requestController
+            ) {
+              return;
+            }
             if (type === 'delta') {
               setMessages((current) =>
                 current.map((item) =>
@@ -95,7 +102,9 @@ export function useChatStream({ lesson, apiKey, onProgress }) {
           },
         });
       } catch (requestError) {
-        const interrupted = requestError.name === 'AbortError';
+        const interrupted =
+          requestController.signal.aborted ||
+          requestError.name === 'AbortError';
         setMessages((current) =>
           current.map((item) =>
             item.id === messageId
@@ -103,12 +112,14 @@ export function useChatStream({ lesson, apiKey, onProgress }) {
               : item
           )
         );
-        if (!interrupted) {
+        if (!interrupted && controller.current === requestController) {
           setError(requestError.message);
         }
       } finally {
-        controller.current = null;
-        setIsStreaming(false);
+        if (controller.current === requestController) {
+          controller.current = null;
+          setIsStreaming(false);
+        }
       }
     },
     [apiKey, isStreaming, lesson, messages, onProgress]

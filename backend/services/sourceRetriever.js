@@ -5,6 +5,13 @@ export function sourcesForStep(
   step,
   maxChars = appConfig.lesson.maxSourceContextCharacters
 ) {
+  if (!step || !Array.isArray(step.sourceIds)) {
+    throw new ApiError(
+      422,
+      'INVALID_PLAN_SOURCES',
+      'The lesson plan sources are invalid.'
+    );
+  }
   const ids = new Set(step.sourceIds);
   const found = sources.filter((source) => ids.has(source.id));
   if (found.length !== ids.size) {
@@ -15,9 +22,14 @@ export function sourcesForStep(
     );
   }
   let used = 0;
-  return found.filter((source) => {
-    used += source.text.length;
-    return used <= maxChars;
+  return found.flatMap((source) => {
+    const remaining = maxChars - used;
+    if (remaining <= 0) {
+      return [];
+    }
+    const text = source.text.slice(0, remaining);
+    used += text.length;
+    return text ? [{ ...source, text }] : [];
   });
 }
 
@@ -53,8 +65,28 @@ export function sourcesForPlanning(
   return selected;
 }
 export function validateSourceIds(ids, sources) {
-  const known = new Set(sources.map(({ id }) => id));
-  if (!Array.isArray(ids) || ids.some((id) => !known.has(id))) {
+  const known = new Set();
+  const validSources =
+    Array.isArray(sources) &&
+    sources.every((source) => {
+      if (
+        !source ||
+        typeof source.id !== 'string' ||
+        !source.id.trim() ||
+        typeof source.text !== 'string' ||
+        !source.text.trim() ||
+        known.has(source.id)
+      ) {
+        return false;
+      }
+      known.add(source.id);
+      return true;
+    });
+  if (
+    !validSources ||
+    !Array.isArray(ids) ||
+    ids.some((id) => typeof id !== 'string' || !id.trim() || !known.has(id))
+  ) {
     throw new ApiError(
       422,
       'INVALID_SOURCE_REFERENCE',

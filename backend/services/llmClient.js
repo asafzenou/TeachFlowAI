@@ -162,8 +162,14 @@ export async function generateJson({
   responseSchema,
   clientFactory = createClient,
   timeoutMs = appConfig.ai.timeoutMs,
+  signal,
 }) {
   const context = contextFor({ requestId, operation, model, schemaId });
+  if (signal?.aborted) {
+    const error = new Error('The request was cancelled.');
+    error.name = 'AbortError';
+    throw error;
+  }
   if (!apiKey?.trim()) {
     throw new ApiError(
       401,
@@ -200,14 +206,18 @@ export async function generateJson({
     throw errorFor(classifyProviderError(error), error, 'SDK_INIT');
   }
   const controller = new AbortController();
+  const requestSignal = signal
+    ? AbortSignal.any([signal, controller.signal])
+    : controller.signal;
   const startedAt = Date.now();
   let timer;
+  let removeCancellationListener = () => {};
   try {
     const config = {
       responseMimeType: 'application/json',
       responseJsonSchema: schema,
       maxOutputTokens: appConfig.ai.maxOutputTokens,
-      abortSignal: controller.signal,
+      abortSignal: requestSignal,
     };
     diagnostic(context, 'REQUEST_CONFIGURATION', { outcome: 'success' });
     diagnostic(context, 'GEMINI_REQUEST_STARTED');
@@ -226,8 +236,29 @@ export async function generateJson({
         );
       }, timeoutMs);
     });
-    const response = await Promise.race([request, timeout]);
+    const cancelled = signal
+      ? new Promise((_, reject) => {
+          const rejectForCancellation = () => {
+            const error = new Error('The request was cancelled.');
+            error.name = 'AbortError';
+            reject(error);
+          };
+          if (signal.aborted) {
+            rejectForCancellation();
+            return;
+          }
+          signal.addEventListener('abort', rejectForCancellation, {
+            once: true,
+          });
+          removeCancellationListener = () =>
+            signal.removeEventListener('abort', rejectForCancellation);
+        })
+      : null;
+    const response = await Promise.race(
+      [request, timeout, cancelled].filter(Boolean)
+    );
     clearTimeout(timer);
+    removeCancellationListener();
     diagnostic(context, 'GEMINI_REQUEST_COMPLETED', {
       elapsedMs: Date.now() - startedAt,
     });
@@ -273,6 +304,11 @@ export async function generateJson({
     }
   } catch (error) {
     clearTimeout(timer);
+    removeCancellationListener();
+    if (signal?.aborted) {
+      diagnostic(context, 'GEMINI_REQUEST_CANCELLED', { source: 'client' });
+      throw error;
+    }
     if (error instanceof ApiError) {
       logger.error(context.operation, {
         requestId: context.requestId,

@@ -93,6 +93,25 @@ test('Gemini JSON diagnostics keep provider and local failures distinct', async 
     );
   });
   await t.test(
+    'client cancellation rejects the initial JSON request promptly',
+    async () => {
+      const controller = new AbortController();
+      let providerSignal;
+      const pending = generateJson(
+        options(
+          async ({ config }) => {
+            providerSignal = config.abortSignal;
+            return new Promise(() => {});
+          },
+          { signal: controller.signal, timeoutMs: 1_000 }
+        )
+      );
+      controller.abort();
+      await assert.rejects(pending, { name: 'AbortError' });
+      assert.equal(providerSignal.aborted, true);
+    }
+  );
+  await t.test(
     'empty, malformed, and schema-mismatched responses are local failures',
     async () => {
       await assert.rejects(
