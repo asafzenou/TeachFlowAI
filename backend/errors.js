@@ -26,7 +26,11 @@ export function sendError(res, error, req) {
       rootCause: 'INVALID_REQUEST',
     });
     return res.status(400).json({
-      error: { code: 'INVALID_REQUEST', message: 'The request is invalid.' },
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'The request is invalid.',
+        requestId: req?.requestId,
+      },
     });
   }
   const status = error instanceof ApiError ? error.status : 500;
@@ -48,6 +52,7 @@ export function sendError(res, error, req) {
         error instanceof ApiError
           ? error.message
           : 'An unexpected error occurred.',
+      requestId: req?.requestId,
     },
   });
 }

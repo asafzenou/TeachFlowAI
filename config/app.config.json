@@ -1,5 +1,5 @@
 {
-  "ai": { "provider": "gemini", "defaultModel": "gemini-2.5-flash", "timeoutMs": 30000, "maxOutputTokens": 4096 },
+  "ai": { "provider": "gemini", "defaultModel": "gemini-3.5-flash-lite", "timeoutMs": 30000, "maxOutputTokens": 4096 },
   "document": { "maxFileBytes": 4194304, "chunkSizeCharacters": 1800, "chunkOverlapCharacters": 200 },
   "lesson": { "maxSteps": 8, "maxSourceContextCharacters": 8000 },
   "input": { "maxTeacherPromptCharacters": 3000, "maxStudentMessageCharacters": 4000, "maxConversationMessages": 20, "maxJsonBodyBytes": "100kb" }

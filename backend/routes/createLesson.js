@@ -24,7 +24,8 @@ export async function createLesson(req, res) {
       throw new ApiError(
         401,
         'MISSING_API_KEY',
-        'A Gemini API key is required.'
+        'A Gemini API key is required.',
+        { stage: 'API_KEY_VALIDATION' }
       );
     }
     const input = Request.parse(req.body);

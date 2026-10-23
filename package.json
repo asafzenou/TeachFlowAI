@@ -13,7 +13,7 @@
     "build": "vite build",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "node --watch backend/local.js",
+    "dev:server": "node --watch --watch-path=backend --watch-path=config backend/local.js",
     "dev:client": "vite",
     "format": "oxfmt frontend api backend vite.config.js",
     "format:check": "oxfmt --check frontend api backend vite.config.js",
@@ -23,7 +23,12 @@
     "test": "node --test backend/**/*.test.js frontend/src/**/*.test.js",
     "check": "npm run format:check && npm run lint"
   },
-  "keywords": ["ai", "education", "react", "vercel"],
+  "keywords": [
+    "ai",
+    "education",
+    "react",
+    "vercel"
+  ],
   "license": "MIT",
   "dependencies": {
     "@google/genai": "^2.30.0",
@@ -34,6 +39,7 @@
     "pdf-parse": "^2.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

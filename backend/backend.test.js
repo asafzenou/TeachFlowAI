@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import request from 'supertest';
 
+import { lessonPlanJsonSchema } from './agents/lessonPlanner.js';
 import { createApp } from './app.js';
 import {
   appConfig,
@@ -41,8 +42,18 @@ test('health endpoint works', async () => {
   assert.deepEqual(res.body, { status: 'ok', service: 'TeachFlowAI' });
   assert.match(res.headers['x-request-id'], /^[0-9a-f-]{36}$/i);
 });
+test('OpenAPI document and local Swagger UI are available', async () => {
+  const app = createApp();
+  const specification = await request(app).get('/openapi.json');
+  assert.equal(specification.status, 200);
+  assert.equal(specification.body.openapi, '3.1.0');
+  assert.ok(specification.body.paths['/api/lesson/create']);
+  const docs = await request(app).get('/docs/');
+  assert.equal(docs.status, 200);
+  assert.match(docs.headers['content-type'], /text\/html/);
+});
 test('application configuration is valid and environment defaults are safe', () => {
-  assert.equal(appConfig.ai.defaultModel, 'gemini-2.5-flash');
+  assert.equal(appConfig.ai.defaultModel, 'gemini-3.5-flash-lite');
   assert.equal(readEnvironment({}).backendPort, 3001);
   assert.equal(readEnvironment({ GEMINI_API_KEY: '' }).geminiApiKey, undefined);
   assert.throws(() =>
@@ -57,6 +68,13 @@ test('missing API key is a safe client error', async () => {
   const res = await request(createApp()).post('/api/lesson/chat').send({});
   assert.equal(res.status, 401);
   assert.equal(res.body.error.code, 'MISSING_API_KEY');
+  assert.match(res.body.error.requestId, /^[0-9a-f-]{36}$/i);
+});
+test('lesson creation returns a correlatable error without an API key', async () => {
+  const res = await request(createApp()).post('/api/lesson/create');
+  assert.equal(res.status, 401);
+  assert.equal(res.body.error.code, 'MISSING_API_KEY');
+  assert.match(res.body.error.requestId, /^[0-9a-f-]{36}$/i);
 });
 test('TXT and Hebrew survive processing', async () => {
   const output = await processDocument({
@@ -129,6 +147,14 @@ test('planning context is bounded while retaining page-aware source records', ()
   );
   assert.equal(selected[0].id, 'chunk_1');
   assert.ok(selected.every((source) => Number.isInteger(source.page)));
+});
+test('planning schema restricts model citations to supplied source IDs', () => {
+  const schema = lessonPlanJsonSchema(['chunk_1', 'chunk_2']);
+  assert.deepEqual(schema.properties.steps.items.properties.sourceIds, {
+    type: 'array',
+    minItems: 1,
+    items: { type: 'string', enum: ['chunk_1', 'chunk_2'] },
+  });
 });
 test('invalid source IDs and progress are rejected', () => {
   assert.throws(() => validateSourceIds(['invented'], state.sources), {

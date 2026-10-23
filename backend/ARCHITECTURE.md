@@ -63,9 +63,9 @@ flowchart TD
   TUTOR --> PROG[progressManager]
 ```
 
-Create errors use `{ "error": { "code", "message" } }`; common codes include `MISSING_FILE`, `FILE_TOO_LARGE` (413), `UNSUPPORTED_FILE` (415), `EMPTY_DOCUMENT`, `MISSING_API_KEY`, and safe AI-provider errors.
+Create errors use `{ "error": { "code", "message", "requestId" } }`; common codes include `MISSING_FILE`, `FILE_TOO_LARGE` (413), `UNSUPPORTED_FILE` (415), `EMPTY_DOCUMENT`, `MISSING_API_KEY`, and safe AI-provider errors. The `requestId` is safe to copy from an error response or `X-Request-ID` header to correlate it with backend logs.
 
-Chat SSE events are `delta` (`{text}`), `sources` (`{sourceIds}`), `progress` (`{progress, lessonState}`), `done`, and `error`. Metadata is never included in `delta`. A disconnected client ends before state is emitted, so it cannot commit progress.
+Chat SSE events are `delta` (`{text}`), `sources` (`{sourceIds}`), `progress` (`{progress, lessonState}`), `done`, and `error` (`{error: {code, message, requestId}}`). Metadata is never included in `delta`. A disconnected client ends before state is emitted, so it cannot commit progress.
 
 ## Lesson creation
 
@@ -102,12 +102,14 @@ sequenceDiagram
   UI->>API: state + answer
   API->>Tutor: step sources and context
   Tutor->>Gemini: structured teaching/evaluation request
-  Gemini-->>Tutor: message + evaluation
-  API->>API: validate citations and transition
+  Gemini-->>Tutor: validated evaluation JSON
+  Tutor->>Gemini: native text stream
+  Gemini-->>Tutor: streamed tutor prose
+  API->>API: validate citations and transition after stream completion
   API-->>UI: delta, sources, progress, done
 ```
 
-The tutor returns one schema-validated response containing visible text plus `understanding`, `action`, `shouldAdvance`, and citations. Only a `correct`/`advance` evaluation can progress. In this MVP, the safe structured Gemini response is received before it is chunked into SSE deltas; this prioritizes preventing malformed output from advancing state.
+Each tutor turn makes two Gemini requests: a schema-validated evaluation returns `understanding`, `action`, `shouldAdvance`, and citations; then a native stream produces only student-facing prose. Only a `correct`/`advance` evaluation can progress, and progress is emitted only after the prose stream completes. This prevents partial streamed output from mutating lesson state.
 
 ## Agentic workflow and state machine
 

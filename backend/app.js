@@ -1,9 +1,11 @@
 import express from 'express';
 import multer from 'multer';
+import swaggerUi from 'swagger-ui-express';
 
 import { appConfig } from './config/index.js';
 import { sendError } from './errors.js';
 import { logger } from './logger.js';
+import { openApiDocument } from './openapi.js';
 import { chatLesson } from './routes/chatLesson.js';
 import { createLesson } from './routes/createLesson.js';
 import { health } from './routes/health.js';
@@ -35,6 +37,16 @@ export function createApp() {
     );
     next();
   });
+  app.get(['/openapi.json', '/api/openapi.json'], (_req, res) =>
+    res.json(openApiDocument)
+  );
+  app.use(
+    ['/docs', '/api/docs'],
+    swaggerUi.serve,
+    swaggerUi.setup(openApiDocument, {
+      customSiteTitle: 'TeachFlowAI API Docs',
+    })
+  );
   app.get('/api/health', health);
   app.post('/api/lesson/create', upload.single('file'), createLesson);
   app.post(

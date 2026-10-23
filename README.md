@@ -40,6 +40,8 @@ Backend logging is enabled by default. `npm.cmd run dev` emits newline-delimited
 
 `POST /api/lesson/create` accepts a multipart PDF/TXT upload (maximum 4 MB). `POST /api/lesson/chat` is a POST-based SSE response. Text-extractable PDFs are supported; scanned/image-only PDFs return an OCR guidance error.
 
+Local interactive API documentation is available at `http://localhost:3001/docs`; its OpenAPI document is at `http://localhost:3001/openapi.json`. On Vercel, use `/api/docs` and `/api/openapi.json`.
+
 Deploy to Vercel with `GEMINI_API_KEY` set in Project Settings when the server supplies a key. The configured serverless duration is 60 seconds. Uploads are parsed in memory, no temporary files are created, and no deployment has been claimed as tested here. Verify a real-key streamed response after deployment, since streaming behavior can depend on the chosen Vercel runtime/plan.
 
 ## Known limitations

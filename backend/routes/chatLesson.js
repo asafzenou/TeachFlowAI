@@ -58,7 +58,8 @@ export async function chatLesson(req, res) {
       throw new ApiError(
         401,
         'MISSING_API_KEY',
-        'A Gemini API key is required.'
+        'A Gemini API key is required.',
+        { stage: 'API_KEY_VALIDATION' }
       );
     }
     const input = Request.parse(req.body);
@@ -139,6 +140,7 @@ export async function chatLesson(req, res) {
         error: {
           code: error.code || 'GENERATION_FAILED',
           message: 'Unable to generate a tutor response.',
+          requestId,
         },
       });
       res.end();
