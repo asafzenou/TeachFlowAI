@@ -73,7 +73,7 @@ export function SetupPage({
     <main className='setup-page study-shell min-h-[100dvh] text-slate-900'>
       <div className='study-orb study-orb-one' />
       <div className='study-orb study-orb-two' />
-      <header className='setup-header relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8'>
+      <header className='setup-header relative z-20 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8'>
         <Brand />
         <button
           type='button'

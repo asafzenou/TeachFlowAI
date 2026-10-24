@@ -1,57 +1,87 @@
-# TeachFlowAI
+# TeachFlowAI — Teach Me This File
 
-TeachFlowAI turns a PDF or TXT document into a grounded, interactive AI lesson. Teachers provide teaching instructions; a source-aware tutor guides the student and advances only after validated understanding.
+A source-grounded AI tutor that turns a teacher-uploaded document and teaching instructions into a guided, interactive lesson. The tutor teaches **one concept at a time**, checks understanding, adapts its response, and tracks lesson progress separately from the chat transcript.
 
-## Stack and architecture
+> **Live app:** ADD_VERCEL_URL_HERE  
+> **Repository:** ADD_PUBLIC_GITHUB_URL_HERE
 
-React 19, Vite, Tailwind, Node/Express-compatible Vercel Functions, Gemini (`@google/genai`), SSE, Zod, and in-memory document processing.
+## What you can do
 
-- `frontend/` — React lesson workspace and SSE client.
-- `api/` — Vercel function entry points.
-- `backend/agents/` — lesson planner and tutor orchestration.
-- `backend/services/` — Gemini, document extraction, and source retrieval.
-- `backend/lesson/` — explicit lesson/progress state and transition validation.
+1. Upload a text-based **PDF** or **TXT** document (up to **2 MB**, with up to **1 MiB** of extracted text).
+2. Supply a teacher prompt describing audience, language, style, and goals.
+3. Choose **Auto (3–8 steps)** or a specific lesson length (**3–8 steps**).
+4. Start a lesson, answer the tutor's questions, and view step-by-step progress.
+5. Inspect cited source passages behind tutor messages, receive streamed responses, and stop a response in progress.
 
-Tutor prose uses Gemini's native `generateContentStream`, so text arrives incrementally. Evaluation/progress are produced separately as validated JSON; progress is sent only after the text stream completes. Browser cancellation closes the SSE request, aborts the provider stream, and prevents progress updates.
+The app is designed to teach from the uploaded file, not simply summarize it. It supports Hebrew content, subject to the PDF's extractable text and layout quality.
 
-Documents are chunked with page references. Planning receives a bounded representative context (first/middle/last, then sequential fill); each tutoring turn receives only the relevant planned sources within a context budget.
+## Architecture
 
-## Local setup
+| Layer | Technology | Responsibility |
+| --- | --- | --- |
+| Frontend | React, Vite, Tailwind CSS, JavaScript | Setup, chat, streaming UI, lesson progress and settings |
+| HTTP API | Node.js, Express, Vercel Functions | Upload validation, lesson creation, chat SSE endpoints |
+| Lesson planner | Gemini with structured output + Zod validation | Generate bounded, source-aware lesson plan |
+| Tutor | Gemini structured evaluation + native streamed text | Assess student response, teach, and conditionally advance |
+| Lesson state | Client-held structured state, backend validated | Persist plan and progress during the browser session |
+| Documents | In-memory PDF/TXT extraction and page-aware chunks | Bounded source context and citations |
 
-Requires Node.js 24+ and npm 11+.
+Key folders: `frontend/src/components/`, `frontend/src/hooks/`, `backend/agents/`, `backend/lesson/`, `backend/services/`, `backend/routes/`, and `api/`.
 
-1. Copy `.env.example` to `.env` and set `GEMINI_API_KEY` for the local backend fallback.
-2. Run `npm.cmd install` (PowerShell may require `.cmd` because of execution policy).
-3. Run `npm.cmd run dev`, then open `http://localhost:5173`.
+**Teaching flow:** upload → extract and chunk → create validated lesson plan → stream tutor messages → evaluate student answer → update progress only when appropriate. Evaluation and streamed prose are distinct model operations; the app does not use a separate LLM-as-a-Judge service.
 
-The in-app key setting is browser-memory only and is sent to the existing backend per request. Never put a key in `VITE_` variables, source control, logs, or browser persistence.
+## Run locally
 
-## Logging
+**Prerequisites:** Node.js **24+**, npm **11+**, and a Gemini API key.
 
-Backend logging is enabled by default. `npm.cmd run dev` emits newline-delimited JSON records with a timestamp, request ID, operation, stage, response status, and duration. It records request lifecycle, PDF parsing/chunking, planning, Gemini calls, JSON validation, tutor streaming, progress, and safe error classifications. It never records API keys, credentials, document content, prompts, response text, or individual stream tokens.
+```bash
+npm install
+npm run dev
+```
 
-## Commands
+Open **http://localhost:5173**. The backend starts at **http://localhost:3001**. Enter your API key in the app's Settings panel. Alternatively, copy `.env.example` to `.env` and set `GEMINI_API_KEY` as a **server-only** local fallback. Do not use a `VITE_` prefix for secrets.
 
-- `npm.cmd test` — unit tests.
-- `npm.cmd run check` — formatting and lint checks.
-- `npm.cmd run build` — production frontend build.
+On PowerShell, use `npm.cmd` instead of `npm` if execution policy blocks the npm PowerShell shim.
 
-## API and deployment
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start Vite and the local backend |
+| `npm test` | Run automated Node tests |
+| `npm run check` | Formatting and lint checks |
+| `npm run build` | Build the frontend |
 
-`POST /api/lesson/create` accepts a multipart PDF/TXT upload of up to 2 MB. Multipart fields and extractable text are also bounded: the lesson must contain no more than 1 MiB of extracted UTF-8 text. This leaves headroom below Vercel's Function request limit for multipart framing and keeps the client-held lesson state practical. Text-extractable PDFs are supported; scanned/image-only PDFs return an OCR guidance error.
+Local API documentation: **http://localhost:3001/docs** (OpenAPI JSON: `/openapi.json`).
 
-`POST /api/lesson/chat` is a POST-based SSE response. It accepts up to 3 MB of JSON because the stateless design sends the bounded lesson state (including source passages) on each turn. Lesson-creation responses are checked against a 2 MiB JSON ceiling and contain one canonical `lessonState`, rather than duplicate top-level plan/source copies.
+## Deploy on Vercel
 
-Local interactive API documentation is available at `http://localhost:3001/docs`; its OpenAPI document is at `http://localhost:3001/openapi.json`. On Vercel, use `/api/docs` and `/api/openapi.json`.
+Deploy the **repository root** to Vercel. The Vite build emits `dist/`; the `api/` directory provides Vercel Function entry points. The repo includes `vercel.json` configuration. If you want a server-side fallback key, set `GEMINI_API_KEY` **only in Vercel server-side environment variables**. Reviewers can instead enter their own key in Settings.
 
-Deploy the repository root to Vercel; `npm run build` creates the Vite frontend in `dist`, and the `api/` entry points deploy as Functions importing the same backend app. The SPA rewrite excludes `/api`, so API Functions remain routable. Set `GEMINI_API_KEY` in Vercel Project Settings only when the server should provide the fallback key. Do not set it as a `VITE_` variable or commit it to `.env`.
+Before submitting, verify **the actual deployed URL** in a private browser session: upload a PDF, create a lesson with a reviewer-provided key, stream a reply, stop a reply, inspect a citation, and confirm progress. **Do not consider deployment verified until this has been tested.**
 
-The configured serverless duration is 60 seconds. Uploads are parsed in memory and no temporary files are created. This repository has not been deployed by this hardening pass. Before production, verify a real-key streamed response and cancellation on the target Vercel plan, since Function streaming and request limits are platform-plan behavior.
+## API key handling
 
-## Known limitations
+The key is kept in ephemeral React state and sent to the backend per request. Application code is intended not to persist or log the key. Use **HTTPS** for the live app; TLS protects transport but the receiving server can read the key to call Gemini. Do not commit `.env` or post keys in issues, logs, screenshots, or examples.
 
-- No OCR for scanned PDFs.
-- Lesson state is client-held for this MVP; there is no cross-device persistence.
-- Client-held state is validated but not signed; a determined client can alter lesson content/progress. Do not use it as an authoritative record.
-- Documents that expand beyond 1 MiB of extractable text are rejected, even when the uploaded PDF/TXT is under 2 MB.
-- Provider cancellation stops the local request, but usage already accepted by Gemini may still be charged.
+## Limits and known tradeoffs
+
+- **No OCR**: scanned/image-only PDFs need text extraction before upload.
+- PDF tables, formulas, complex layouts, and some RTL extraction may be imperfect.
+- The planner samples bounded source context; large documents can omit important details from the generated plan.
+- No database, accounts, cross-device sync, or authoritative server-side progress history. Client-held state is validated but not cryptographically signed.
+- Gemini model availability, quotas, and response behavior depend on the reviewer's API key and provider.
+- Aborting a stream does not guarantee that already accepted provider usage is free.
+- Function size/time limits and streaming must be confirmed on the actual hosting plan.
+
+## Tests and evidence
+
+Automated tests are in `backend/backend.test.js`, `backend/services/llmClient.test.js`, `frontend/src/hooks/useChatStream.test.js`, and `frontend/src/utils/sseParser.test.js`. These cover validation, document processing, progress transitions, planner contracts, safe errors, and SSE parsing with mocks. **Automated correctness is not a substitute for a live pedagogical evaluation.**
+
+See **[EVALUATION.md](./EVALUATION.md)** for the five behavioral scenarios, expected outcomes, observed excerpts from an earlier tutor interaction, and a live-run checklist. See **[DECISIONS.md](./DECISIONS.md)** for rationale, deliberate exclusions, limitations, and next steps.
+
+## Submission checklist
+
+- [ ] Replace both URL placeholders above with the **public GitHub repository** and **live app URL**.
+- [ ] Test the deployed app in an incognito/private window with the reviewer's key workflow.
+- [ ] Run `npm test`, `npm run check`, and `npm run build`; record actual results.
+- [ ] Complete and date the live test record in `EVALUATION.md`.
+- [ ] Verify no secrets are committed and include meaningful Git commits.
