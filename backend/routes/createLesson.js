@@ -7,7 +7,33 @@ import { createLessonState } from '../lesson/lessonState.js';
 import { logStage } from '../logger.js';
 import { assertLessonResponseSize } from '../responseSize.js';
 import { processDocument } from '../services/documentProcessor.js';
-const Request = z.object({
+const LessonLength = z
+  .object({
+    mode: z.enum(['auto', 'custom']),
+    steps: z.number().int().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.mode === 'auto' && value.steps !== null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['steps'],
+        message: 'Auto lesson length must not include a step count.',
+      });
+    }
+    if (
+      value.mode === 'custom' &&
+      (value.steps === null ||
+        value.steps < appConfig.lesson.minSteps ||
+        value.steps > appConfig.lesson.maxSteps)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['steps'],
+        message: `Custom lesson length must be an integer between ${appConfig.lesson.minSteps} and ${appConfig.lesson.maxSteps}.`,
+      });
+    }
+  });
+export const Request = z.object({
   teacherPrompt: z
     .string()
     .trim()
@@ -15,6 +41,19 @@ const Request = z.object({
     .max(appConfig.input.maxTeacherPromptCharacters),
   apiKey: z.string().trim().min(1).optional(),
   model: z.string().optional(),
+  lessonLength: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') {
+        return value;
+      }
+      try {
+        return JSON.parse(value);
+      } catch {
+        return { invalidLessonLength: true };
+      }
+    },
+    LessonLength.optional().default({ mode: 'auto', steps: null })
+  ),
 });
 export async function createLesson(req, res) {
   const requestId = req.requestId;

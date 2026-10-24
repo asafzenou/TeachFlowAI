@@ -30,10 +30,15 @@ const AppConfigSchema = z
         (value) => value.chunkOverlapCharacters < value.chunkSizeCharacters,
         'Chunk overlap must be smaller than chunk size.'
       ),
-    lesson: z.object({
-      maxSteps: z.number().int().min(1).max(20),
-      maxSourceContextCharacters: z.number().int().min(500).max(30000),
-    }),
+    lesson: z
+      .object({
+        minSteps: z.number().int().min(1).max(20),
+        maxSteps: z.number().int().min(1).max(20),
+        maxSourceContextCharacters: z.number().int().min(500).max(30000),
+      })
+      .refine((value) => value.minSteps <= value.maxSteps, {
+        message: 'Minimum lesson steps cannot exceed maximum lesson steps.',
+      }),
     input: z.object({
       maxTeacherPromptCharacters: z.number().int().min(1).max(10000),
       maxStudentMessageCharacters: z.number().int().min(1).max(10000),

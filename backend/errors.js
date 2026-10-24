@@ -12,6 +12,9 @@ export class ApiError extends Error {
     if (options.stage) {
       this.stage = options.stage;
     }
+    if (options.diagnostic) {
+      this.diagnostic = options.diagnostic;
+    }
   }
 }
 export function sendError(res, error, req) {
@@ -41,6 +44,9 @@ export function sendError(res, error, req) {
     rootCause: error?.providerCode || code,
     providerStatus: error?.providerStatus,
     providerCode: error?.providerCode,
+    ...(process.env.NODE_ENV !== 'production' && error?.diagnostic
+      ? { diagnostic: error.diagnostic }
+      : {}),
   });
   res.status(status).json({
     error: {

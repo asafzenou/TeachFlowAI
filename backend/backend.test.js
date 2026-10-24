@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import request from 'supertest';
 
-import { lessonPlanJsonSchema } from './agents/lessonPlanner.js';
+import {
+  lessonPlanJsonSchema,
+  lessonPlanSchema,
+} from './agents/lessonPlanner.js';
 import { createApp } from './app.js';
 import {
   appConfig,
@@ -15,6 +18,7 @@ import {
   validateClientState,
 } from './lesson/progressManager.js';
 import { assertLessonResponseSize, jsonByteLength } from './responseSize.js';
+import { Request } from './routes/createLesson.js';
 import { processDocument } from './services/documentProcessor.js';
 import {
   sourcesForPlanning,
@@ -211,6 +215,46 @@ test('planning schema restricts model citations to supplied source IDs', () => {
     minItems: 1,
     items: { type: 'string', enum: ['chunk_1', 'chunk_2'] },
   });
+});
+test('lesson length defaults to auto and validates custom bounds', () => {
+  const legacy = Request.parse({ teacherPrompt: 'Teach this' });
+  assert.deepEqual(legacy.lessonLength, { mode: 'auto', steps: null });
+  assert.deepEqual(
+    Request.parse({
+      teacherPrompt: 'Teach this',
+      lessonLength: JSON.stringify({ mode: 'custom', steps: 5 }),
+    }).lessonLength,
+    { mode: 'custom', steps: 5 }
+  );
+  for (const steps of [2, 2.5, 9, null]) {
+    assert.throws(() =>
+      Request.parse({
+        teacherPrompt: 'Teach this',
+        lessonLength: JSON.stringify({ mode: 'custom', steps }),
+      })
+    );
+  }
+});
+test('planner contracts enforce auto and custom lesson lengths', () => {
+  const autoSchema = lessonPlanJsonSchema(['chunk_1']);
+  assert.equal(autoSchema.properties.steps.minItems, 3);
+  assert.equal(autoSchema.properties.steps.maxItems, 8);
+  assert.equal(autoSchema.properties.objectives.maxItems, 8);
+  const makePlan = (count) => ({
+    title: 'Lesson',
+    language: 'English',
+    objectives: ['Understand the topic'],
+    steps: Array.from({ length: count }, (_, index) => ({
+      id: `step_${index + 1}`,
+      objective: 'Learn a focused concept',
+      sourceIds: ['chunk_1'],
+    })),
+  });
+  for (const count of [3, 5, 8]) {
+    assert.doesNotThrow(() => lessonPlanSchema(count).parse(makePlan(count)));
+  }
+  assert.throws(() => lessonPlanSchema().parse(makePlan(9)));
+  assert.throws(() => lessonPlanSchema(5).parse(makePlan(4)));
 });
 test('invalid source IDs and progress are rejected', () => {
   assert.throws(() => validateSourceIds(['invented'], state.sources), {

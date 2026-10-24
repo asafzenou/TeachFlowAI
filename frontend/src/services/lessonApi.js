@@ -1,9 +1,16 @@
 import { consumeSse } from '../utils/sseParser.js';
 import { fetchJson, responseError } from './apiClient.js';
-export async function createLesson({ file, teacherPrompt, apiKey, signal }) {
+export async function createLesson({
+  file,
+  teacherPrompt,
+  lessonLength,
+  apiKey,
+  signal,
+}) {
   const form = new FormData();
   form.append('file', file);
   form.append('teacherPrompt', teacherPrompt);
+  form.append('lessonLength', JSON.stringify(lessonLength));
   if (apiKey.trim()) {
     form.append('apiKey', apiKey.trim());
   }

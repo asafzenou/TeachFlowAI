@@ -13,7 +13,7 @@ function TeachFlowApp() {
   const creationController = useRef(null);
 
   const handleCreate = useCallback(
-    async ({ file, teacherPrompt }) => {
+    async ({ file, teacherPrompt, lessonLength }) => {
       setCreationError(null);
       setIsCreating(true);
       creationController.current = new AbortController();
@@ -21,6 +21,7 @@ function TeachFlowApp() {
         const result = await createLesson({
           file,
           teacherPrompt,
+          lessonLength,
           apiKey,
           signal: creationController.current.signal,
         });

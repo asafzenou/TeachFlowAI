@@ -31,6 +31,11 @@ export const openApiDocument = {
                     description: 'Optional per-request Gemini key.',
                   },
                   model: { type: 'string', example: 'gemini-3.5-flash-lite' },
+                  lessonLength: {
+                    type: 'string',
+                    description:
+                      'JSON: {"mode":"auto","steps":null} or {"mode":"custom","steps":3..8}.',
+                  },
                 },
               },
             },

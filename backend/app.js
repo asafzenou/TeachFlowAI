@@ -16,8 +16,8 @@ const upload = multer({
     fileSize: appConfig.document.maxFileBytes,
     fieldSize: 16 * 1024,
     files: 1,
-    fields: 3,
-    parts: 4,
+    fields: 4,
+    parts: 5,
   },
 });
 export function createApp() {

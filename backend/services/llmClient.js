@@ -141,11 +141,21 @@ function validateResponse(responseSchema, value) {
   }
   const result = responseSchema.safeParse(value);
   if (!result.success) {
+    const issues = result.error.issues.slice(0, 8).map((issue) => ({
+      path:
+        issue.path
+          .map((part) => (typeof part === 'number' ? '[]' : part))
+          .join('.') || 'root',
+      code: issue.code,
+    }));
     throw new ApiError(
       502,
       'RESPONSE_SCHEMA_MISMATCH',
       'Gemini returned an invalid lesson response.',
-      { stage: 'RESPONSE_SCHEMA_VALIDATION' }
+      {
+        stage: 'RESPONSE_SCHEMA_VALIDATION',
+        diagnostic: { issueCount: result.error.issues.length, issues },
+      }
     );
   }
   return result.data;
@@ -317,6 +327,9 @@ export async function generateJson({
         rootCause: error.code,
         classification: error.code,
         elapsedMs: Date.now() - startedAt,
+        ...(environmentIsDevelopment() && error.diagnostic
+          ? { diagnostic: error.diagnostic }
+          : {}),
       });
       throw error;
     }
@@ -334,6 +347,10 @@ export async function generateJson({
     });
     throw errorFor(classification, error, 'API_REQUEST');
   }
+}
+
+function environmentIsDevelopment() {
+  return process.env.NODE_ENV !== 'production';
 }
 
 export async function* generateTextStream({
