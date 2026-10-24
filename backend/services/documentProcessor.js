@@ -47,35 +47,76 @@ export async function processDocument(
   }
   let pages;
   if (ext === 'pdf' || file.mimetype === 'application/pdf') {
+    let parser;
     try {
       logStage(context, 'PDF_PARSING_STARTED');
+      // Initialize the PDF worker for serverless environments.
+      require('pdf-parse/worker');
       const { PDFParse } = require('pdf-parse');
-      const parser = new PDFParse({ data: file.buffer });
+      parser = new PDFParse({
+        data: file.buffer,
+      });
       const result = await parser.getText();
-      await parser.destroy();
-      pages = result.pages?.map((page, i) => ({
-        text: page.text,
-        page: i + 1,
-      })) || [{ text: result.text, page: 1 }];
-      logStage(context, 'PDF_PARSING_COMPLETED', { pageCount: pages.length });
+      pages = result.pages?.map((page, index) => ({
+        text: page.text || '',
+        page: index + 1,
+      })) || [
+        {
+          text: result.text || '',
+          page: 1,
+        },
+      ];
+      logStage(context, 'PDF_PARSING_COMPLETED', {
+        pageCount: pages.length,
+      });
     } catch (cause) {
+      // Log the original error for production diagnostics.
+      // Do not log document content or API keys.
+      console.error('[PDF_PARSING_FAILED]', {
+        name: cause?.name,
+        message: cause?.message,
+        stack: cause?.stack,
+        nestedCause: cause?.cause?.message,
+        nodeVersion: process.version,
+        platform: process.platform,
+      });
+
       logStage(context, 'PDF_PARSING_FAILED', {
         rootCause: 'PDF_EXTRACTION_FAILED',
       });
+
       throw new ApiError(
         422,
         'PDF_EXTRACTION_FAILED',
         'This PDF could not be read. Image-only/scanned PDFs need OCR.',
         { cause, stage: 'PDF_PARSING' }
       );
+    } finally {
+      if (parser) {
+        try {
+          await parser.destroy();
+        } catch (cleanupError) {
+          console.error('[PDF_CLEANUP_FAILED]', {
+            name: cleanupError?.name,
+            message: cleanupError?.message,
+          });
+        }
+      }
     }
   } else {
-    pages = [{ text: file.buffer.toString('utf8'), page: 1 }];
+    pages = [
+      {
+        text: file.buffer.toString('utf8'),
+        page: 1,
+      },
+    ];
   }
+
   const raw = pages
-    .map(({ text }) => text)
-    .join('')
+    .map(({ text }) => text || '')
+    .join('\n')
     .trim();
+
   if (!raw) {
     throw new ApiError(
       422,
@@ -83,8 +124,10 @@ export async function processDocument(
       'The document has no extractable text. Scanned PDFs need OCR.'
     );
   }
+
   if (
-    Buffer.byteLength(raw, 'utf8') > appConfig.document.maxExtractedTextBytes
+    Buffer.byteLength(raw, 'utf8') >
+    appConfig.document.maxExtractedTextBytes
   ) {
     throw new ApiError(
       413,
@@ -92,16 +135,23 @@ export async function processDocument(
       'The document contains too much extractable text for an in-browser lesson.'
     );
   }
+
   const sources = pages
-    .flatMap(({ text, page }) => chunksFor(text, page))
+    .flatMap(({ text, page }) => chunksFor(text || '', page))
     .filter(({ text }) => text.length > 0)
-    .map((chunk, index) => ({ id: `chunk_${index + 1}`, ...chunk }));
+    .map((chunk, index) => ({
+      id: `chunk_${index + 1}`,
+      ...chunk,
+    }));
+
   logStage(context, 'DOCUMENT_CHUNKING_COMPLETED', {
     pageCount: pages.length,
     sourceCount: sources.length,
   });
+
   return {
     sources,
     coverage: `All extractable text was chunked. Files are limited to ${appConfig.document.maxFileBytes} bytes.`,
   };
 }
+

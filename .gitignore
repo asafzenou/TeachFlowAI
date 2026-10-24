@@ -16,3 +16,6 @@ coverage/
 .oxlintcache
 .vscode/
 *.tsbuildinfo
+
+.vercel
+.env*
