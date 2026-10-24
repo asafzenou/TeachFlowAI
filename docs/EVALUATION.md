@@ -130,17 +130,6 @@ Evaluate whether **Teach Me This File** provides grounded, interactive teaching 
 
 ![Test E5](images/e5.png)
 
-## Results Summary
-
-| ID | Test | Status | Observations / Evidence |
-| --- | --- | --- | --- |
-| E1 | Guided correction of misconception | PASS | Guided follow-up without immediate answer; progress remained at 0%. See `images/e1.png`. |
-| E2 | Adaptation to prior knowledge | PARTIAL | Recognized existing knowledge and maintained the current learning objective. See `images/e2.png`. |
-| E3 | Out-of-source request | PASS | Avoided unsupported numerical claims and fabricated references. See `images/e3.png`. |
-| E4 | Teacher instruction compliance | PARTIAL | Maintained grade-appropriate Hebrew and Socratic interaction. See `images/e4.png`. |
-| E5 | Lesson progress | PARTIAL | Verified transition from 0/5 to 1/5 (20%). See `images/e5.png`. |
-
-
 ## Known Limits and Follow-up
 
 This evaluation targets one authentic Hebrew PDF and one age group. It does not establish behavior for scanned-only pages, long documents, all languages, or unseen lesson topics. The source includes layout-heavy pages, so extraction quality and source passage precision require explicit manual inspection. Future work could add automated response grading with human-reviewed rubrics and a regression dataset, but those are **not** implemented or claimed here.
