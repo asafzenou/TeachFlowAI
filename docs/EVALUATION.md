@@ -33,7 +33,8 @@ Evaluate whether **Teach Me This File** provides grounded, interactive teaching 
 
 > למד תלמיד בכיתה ה' על מחזור המים בטבע מתוך המסמך המצורף. המסמך המקורי מיועד לתלמידים בוגרים יותר, ולכן התאם את המונחים וההסברים לגיל 10–11: השתמש בעברית פשוטה ובדוגמאות יומיומיות. התמקד תחילה במקומות שבהם נמצאים מים, בהתאדות ובמעברי מים, ורק אחר כך הסבר באופן פשוט את ארבע מערכות כדור הארץ אם הדבר מתאים לתוכנית השיעור. בנה שיעור של חמישה שלבים. השתמש בשיטה הסוקרטית: הצג רעיון אחד בכל פעם ושאל שאלה אחת בלבד בכל תגובה. אם התלמיד טועה, תן רמז או דוגמה נגדית לפני מתן התשובה המלאה, ואל תתקדם עד שהבנתו הוכחה. הישאר נאמן למסמך: אל תמציא עובדות או הפניות לעמודים. אם אין מספיק מידע במסמך, אמור זאת בבירור. שמור על עברית תקינה ועל כיווניות קריאה.
 
-![alt text](images\start.png)
+![Lesson setup](images/start.png)
+
 ## Manual Scenarios
 
 ### E1 — Incorrect answer: evaporation vs. disappearance
@@ -53,8 +54,7 @@ Evaluate whether **Teach Me This File** provides grounded, interactive teaching 
 **Notes:** Demonstrates effective Socratic teaching, constructive feedback, and understanding-driven progress control.
 
 
-![alt text](images\e1.png)
-
+![Test E1](images/e1.png)
 ### E2 — Adaptive instruction for a knowledgeable student
 
 **Setup:** During the early lesson, after an introductory question. The PDF defines evaporation and asks students to distinguish water states and locations on p. 5.
@@ -70,7 +70,7 @@ Evaluate whether **Teach Me This File** provides grounded, interactive teaching 
 
 **Notes:** Demonstrates recognition of prior knowledge and consistency with the structured lesson plan.
 
-![alt text](images\e2.png)
+![Test E2](images/e2.png)
 
 ### E3 — Out-of-document question and source integrity
 
@@ -87,7 +87,7 @@ Evaluate whether **Teach Me This File** provides grounded, interactive teaching 
 
 **Notes:** Demonstrates source-grounded teaching, appropriate uncertainty handling, and resistance to unsupported factual claims.
 
-![alt text](images\e3.png)
+![Test E3](images/e3.png)
 
 ### E4 — Teacher instruction compliance, Hebrew/RTL, and source quotations
 
@@ -106,7 +106,7 @@ Evaluate whether **Teach Me This File** provides grounded, interactive teaching 
 
 **Notes:** Demonstrates adherence to the teacher's requested teaching style, age-appropriate communication, and interactive learning.
 
-![alt text](images\e4.png)
+![Test E4](images/e4.png)
 
 ### E5 — Lesson state, completion, and source navigation
 **Setup:** Start a fresh session with `Custom = 5`.
@@ -128,18 +128,7 @@ Evaluate whether **Teach Me This File** provides grounded, interactive teaching 
 
 **Notes:** Demonstrates understanding-driven progression, explicit lesson state management, and synchronization between the learning objectives and the UI progress indicator.
 
-![alt text](images\e5.png)
-
-## Results Summary
-
-| ID | Test | Status | Observations / Evidence |
-| --- | --- | --- | --- |
-| E1 | Guided correction of misconception | PASS | Guided follow-up without immediate answer; progress remained at 0%. See `images/e1.png`. |
-| E2 | Adaptation to prior knowledge | PARTIAL | Recognized existing knowledge and maintained the current learning objective. See `images/e2.png`. |
-| E3 | Out-of-source request | PASS | Avoided unsupported numerical claims and fabricated references. See `images/e3.png`. |
-| E4 | Teacher instruction compliance | PARTIAL | Maintained grade-appropriate Hebrew and Socratic interaction. See `images/e4.png`. |
-| E5 | Lesson progress | PARTIAL | Verified transition from 0/5 to 1/5 (20%). See `images/e5.png`. |
-
+![Test E5](images/e5.png)
 
 ## Known Limits and Follow-up
 
