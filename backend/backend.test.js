@@ -117,11 +117,10 @@ test('lesson functions include the PDF worker and Linux canvas runtime files in 
   const config = JSON.parse(
     await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
   );
-  assert.deepEqual(config.functions['api/lesson/*.js'].includeFiles, [
-    'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
-    'node_modules/@napi-rs/canvas/**',
-    'node_modules/@napi-rs/canvas-linux-x64-gnu/**',
-  ]);
+  assert.equal(
+    config.functions['api/lesson/*.js'].includeFiles,
+    'node_modules/{pdfjs-dist/legacy/build/pdf.worker.mjs,@napi-rs/canvas/**,@napi-rs/canvas-linux-x64-gnu/**}'
+  );
 });
 test('unsupported file is rejected', async () => {
   await assert.rejects(
