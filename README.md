@@ -2,6 +2,8 @@
 
 Teach Me This File is a source-grounded AI tutoring prototype for the AI Engineer home assignment. A teacher uploads a document, gives teaching instructions, and receives an interactive, step-based lesson rather than a one-shot summary.
 
+website: https://teach-flow-ai-nine.vercel.app
+
 ## What it does
 
 - Accepts text-based PDF and TXT files up to 2 MiB.
