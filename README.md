@@ -1,87 +1,98 @@
-# TeachFlowAI — Teach Me This File
+# Teach Me This File
 
-A source-grounded AI tutor that turns a teacher-uploaded document and teaching instructions into a guided, interactive lesson. The tutor teaches **one concept at a time**, checks understanding, adapts its response, and tracks lesson progress separately from the chat transcript.
+Teach Me This File is a source-grounded AI tutoring prototype for the AI Engineer home assignment. A teacher uploads a document, gives teaching instructions, and receives an interactive, step-based lesson rather than a one-shot summary.
 
-> **Live app:** ADD_VERCEL_URL_HERE  
-> **Repository:** ADD_PUBLIC_GITHUB_URL_HERE
+## What it does
 
-## What you can do
+- Accepts text-based PDF and TXT files up to 2 MiB.
+- Generates a 3–8 step lesson using the uploaded material and teacher instructions.
+- Streams tutor replies, supports cancellation, and checks understanding before advancing.
+- Shows lesson progress and source passages associated with each step.
+- Supports a reviewer-supplied Gemini API key for the current browser session.
 
-1. Upload a text-based **PDF** or **TXT** document (up to **2 MB**, with up to **1 MiB** of extracted text).
-2. Supply a teacher prompt describing audience, language, style, and goals.
-3. Choose **Auto (3–8 steps)** or a specific lesson length (**3–8 steps**).
-4. Start a lesson, answer the tutor's questions, and view step-by-step progress.
-5. Inspect cited source passages behind tutor messages, receive streamed responses, and stop a response in progress.
+The app is designed for the assignment's core requirements: streaming interaction, visible progress, a lesson plan and progress state separate from chat history, source-grounded teaching, and clear separation of UI, lesson logic, and AI integration.
 
-The app is designed to teach from the uploaded file, not simply summarize it. It supports Hebrew content, subject to the PDF's extractable text and layout quality.
+## Architecture and stack
 
-## Architecture
+| Area | Implementation |
+| --- | --- |
+| UI | React 19, Vite, Tailwind CSS |
+| API | Express 5, deployed as Vercel Functions |
+| AI | Google Gemini via `@google/genai` (configured model: `gemini-3.5-flash-lite`) |
+| Validation | Zod |
+| Documents | In-memory TXT/PDF extraction with page-aware source chunks |
+| Streaming | Server-Sent Events (SSE) |
 
-| Layer | Technology | Responsibility |
-| --- | --- | --- |
-| Frontend | React, Vite, Tailwind CSS, JavaScript | Setup, chat, streaming UI, lesson progress and settings |
-| HTTP API | Node.js, Express, Vercel Functions | Upload validation, lesson creation, chat SSE endpoints |
-| Lesson planner | Gemini with structured output + Zod validation | Generate bounded, source-aware lesson plan |
-| Tutor | Gemini structured evaluation + native streamed text | Assess student response, teach, and conditionally advance |
-| Lesson state | Client-held structured state, backend validated | Persist plan and progress during the browser session |
-| Documents | In-memory PDF/TXT extraction and page-aware chunks | Bounded source context and citations |
+`frontend/` contains the React client. `backend/` contains document processing, lesson state, agent prompts, provider access, and HTTP routes. `api/` adapts the Express app for Vercel Functions. Lesson state is held by the browser for the active session and is validated on each chat request; there is no database or account system.
 
-Key folders: `frontend/src/components/`, `frontend/src/hooks/`, `backend/agents/`, `backend/lesson/`, `backend/services/`, `backend/routes/`, and `api/`.
+## Local development
 
-**Teaching flow:** upload → extract and chunk → create validated lesson plan → stream tutor messages → evaluate student answer → update progress only when appropriate. Evaluation and streamed prose are distinct model operations; the app does not use a separate LLM-as-a-Judge service.
-
-## Run locally
-
-**Prerequisites:** Node.js **24+**, npm **11+**, and a Gemini API key.
+Prerequisites: Node.js 24+ and npm 11+.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open **http://localhost:5173**. The backend starts at **http://localhost:3001**. Enter your API key in the app's Settings panel. Alternatively, copy `.env.example` to `.env` and set `GEMINI_API_KEY` as a **server-only** local fallback. Do not use a `VITE_` prefix for secrets.
-
-On PowerShell, use `npm.cmd` instead of `npm` if execution policy blocks the npm PowerShell shim.
+Open `http://localhost:5173`. The local API listens on `http://localhost:3001`; API documentation is available at `http://localhost:3001/docs` and OpenAPI JSON at `http://localhost:3001/openapi.json`.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start Vite and the local backend |
-| `npm test` | Run automated Node tests |
-| `npm run check` | Formatting and lint checks |
-| `npm run build` | Build the frontend |
+| `npm run dev` | Run the Vite client and local Express API |
+| `npm test` | Run Node test suites |
+| `npm run check` | Run formatting and lint checks |
+| `npm run build` | Create the production frontend bundle |
 
-Local API documentation: **http://localhost:3001/docs** (OpenAPI JSON: `/openapi.json`).
+On PowerShell, use `npm.cmd` if the npm PowerShell shim is blocked by execution policy.
 
-## Deploy on Vercel
+## Configuration and API keys
 
-Deploy the **repository root** to Vercel. The Vite build emits `dist/`; the `api/` directory provides Vercel Function entry points. The repo includes `vercel.json` configuration. If you want a server-side fallback key, set `GEMINI_API_KEY` **only in Vercel server-side environment variables**. Reviewers can instead enter their own key in Settings.
+Copy `.env.example` to `.env` only if local overrides are needed. `.env` is ignored by Git.
 
-Before submitting, verify **the actual deployed URL** in a private browser session: upload a PDF, create a lesson with a reviewer-provided key, stream a reply, stop a reply, inspect a citation, and confirm progress. **Do not consider deployment verified until this has been tested.**
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | No | Server-only local/deployment fallback key |
+| `BACKEND_PORT` | No | Local API port; defaults to `3001` |
+| `VITE_DEV_PORT` | No | Vite development-server port; defaults to `5173` |
+| `BACKEND_PROXY_TARGET` | No | Local Vite proxy target; defaults to `http://localhost:3001` |
+| `NODE_ENV` | No | Set to `development` locally to include safe diagnostic metadata in applicable API errors |
+| `DEBUG_GEMINI` | No | Reserved local debugging flag; it is not currently read by the application |
 
-## API key handling
+For the expected reviewer flow, enter a Gemini key in **Settings**. It is held only in React memory, sent with the applicable request, and is not written to local/session storage, lesson state, or application logs. Reloading the page clears it. A server fallback key is read only from `GEMINI_API_KEY`; never use a `VITE_` prefix for a secret, because Vite exposes such values to client bundles.
 
-The key is kept in ephemeral React state and sent to the backend per request. Application code is intended not to persist or log the key. Use **HTTPS** for the live app; TLS protects transport but the receiving server can read the key to call Gemini. Do not commit `.env` or post keys in issues, logs, screenshots, or examples.
+Use HTTPS for deployed reviews. The backend necessarily receives a reviewer key to call Gemini, so do not enter a key on an untrusted deployment.
 
-## Limits and known tradeoffs
+### Local debugging
 
-- **No OCR**: scanned/image-only PDFs need text extraction before upload.
-- PDF tables, formulas, complex layouts, and some RTL extraction may be imperfect.
-- The planner samples bounded source context; large documents can omit important details from the generated plan.
-- No database, accounts, cross-device sync, or authoritative server-side progress history. Client-held state is validated but not cryptographically signed.
-- Gemini model availability, quotas, and response behavior depend on the reviewer's API key and provider.
-- Aborting a stream does not guarantee that already accepted provider usage is free.
-- Function size/time limits and streaming must be confirmed on the actual hosting plan.
+For local debugging, add the following to `.env`:
 
-## Tests and evidence
+```dotenv
+NODE_ENV="development"
+```
 
-Automated tests are in `backend/backend.test.js`, `backend/services/llmClient.test.js`, `frontend/src/hooks/useChatStream.test.js`, and `frontend/src/utils/sseParser.test.js`. These cover validation, document processing, progress transitions, planner contracts, safe errors, and SSE parsing with mocks. **Automated correctness is not a substitute for a live pedagogical evaluation.**
+The server writes safe operational logs to the terminal (request IDs, stages, status codes, and provider classifications). It intentionally does not log API keys, prompts, document text, model responses, or raw provider errors. `NODE_ENV=development` enables safe diagnostic metadata in applicable API errors.
 
-See **[EVALUATION.md](./EVALUATION.md)** for the five behavioral scenarios, expected outcomes, observed excerpts from an earlier tutor interaction, and a live-run checklist. See **[DECISIONS.md](./DECISIONS.md)** for rationale, deliberate exclusions, limitations, and next steps.
+## Usage
 
-## Submission checklist
+1. Open Settings and enter a Gemini API key if the server has no fallback key.
+2. Upload a text-based PDF or TXT document.
+3. Describe audience, language, teaching style, and learning goals.
+4. Select automatic lesson length or 3–8 custom steps, then create the lesson.
+5. Answer the tutor's questions. Inspect source references and use Stop to cancel a response when needed.
 
-- [ ] Replace both URL placeholders above with the **public GitHub repository** and **live app URL**.
-- [ ] Test the deployed app in an incognito/private window with the reviewer's key workflow.
-- [ ] Run `npm test`, `npm run check`, and `npm run build`; record actual results.
-- [ ] Complete and date the live test record in `EVALUATION.md`.
-- [ ] Verify no secrets are committed and include meaningful Git commits.
+Scanned PDFs are not OCR'd. Complex tables, formulas, diagrams, and RTL layouts can extract imperfectly. The lesson planner uses bounded source context, so very long documents may have incomplete coverage.
+
+## Deployment
+
+Deploy the repository root to Vercel. `vercel.json` builds the Vite client to `dist/` and maps the functions in `api/`; function duration is configured for the lesson endpoints. Set `GEMINI_API_KEY` only as a server-side Vercel environment variable when a fallback is desired. Do not put it in build-time client variables.
+
+Before sharing a deployment, test it in a private browser with a reviewer-provided key: upload a document, create a lesson, verify streamed output and Stop, inspect a source reference, and confirm progress only advances after demonstrated understanding.
+
+## Review notes
+
+- [Architecture decisions and trade-offs](./docs/DECISIONS.md)
+- [Manual evaluation scenarios and evidence](./docs/EVALUATION.md)
+- [Backend architecture](./docs/BACKEND_ARCHITECTURE.md)
+- [Frontend architecture](./docs/FRONTEND_ARCHITECTURE.md)
+
+Known prototype constraints include no OCR, no persistent accounts/sessions, client-held (not cryptographically signed) lesson state, provider quota/model dependency, and the need to validate serverless streaming and payload limits on the target Vercel plan.

@@ -71,7 +71,7 @@ A version of `backend/services/llmClient.js` shown in chat used `GoogleGenAI`, `
 
 ## 6. Logging/diagnostics investigation
 
-Initially we suggested setting `DEBUG_GEMINI=true`, but **that was the wrong flag** for the later Codex implementation. Actual search results of backend code showed:
+ Actual search results of backend code showed:
 - `backend/config/index.js` has `geminiDiagnostics` parsed from `GEMINI_DIAGNOSTICS`.
 - `backend/services/llmClient.js`: `diagnosticsEnabled()` checks `process.env.NODE_ENV !== 'production' && environment.geminiDiagnostics`.
 - `llmClient.js` contains diagnostic stages including `API_KEY_VALIDATION`, `MODEL_SELECTION`, `SCHEMA_CONFIGURATION`, `SDK_INIT`, `REQUEST_CONFIGURATION`, `API_REQUEST`, `RESPONSE_TEXT_EXTRACTION`, `JSON_PARSING`, `RESPONSE_SCHEMA_VALIDATION`, `PROVIDER_ERROR`, `STREAM_INIT`, `STREAM_CANCELLATION`.
