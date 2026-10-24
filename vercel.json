@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "functions": {
     "api/lesson/*.js": {
+      "includeFiles": [
+        "node_modules/@napi-rs/canvas/**",
+        "node_modules/@napi-rs/canvas-linux-x64-gnu/**"
+      ],
       "maxDuration": 60
     }
   },

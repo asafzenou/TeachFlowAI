@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import request from 'supertest';
@@ -98,6 +99,28 @@ test('TXT and Hebrew survive processing', async () => {
     buffer: Buffer.from('שלום עולם and text'),
   });
   assert.match(output.sources[0].text, /שלום עולם/);
+});
+test('the documented Hebrew PDF evaluation fixture remains extractable', async () => {
+  const buffer = await readFile(
+    new URL('../docs/Water_Cycle_Lesson_vizman.pdf', import.meta.url)
+  );
+  const output = await processDocument({
+    originalname: 'Water_Cycle_Lesson_vizman.pdf',
+    mimetype: 'application/pdf',
+    size: buffer.length,
+    buffer,
+  });
+  assert.equal(output.sources.length, 9);
+  assert.match(output.sources[0].text, /צוות/);
+});
+test('lesson functions include PDF.js native canvas dependencies in Vercel', async () => {
+  const config = JSON.parse(
+    await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
+  );
+  assert.deepEqual(config.functions['api/lesson/*.js'].includeFiles, [
+    'node_modules/@napi-rs/canvas/**',
+    'node_modules/@napi-rs/canvas-linux-x64-gnu/**',
+  ]);
 });
 test('unsupported file is rejected', async () => {
   await assert.rejects(
