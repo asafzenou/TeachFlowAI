@@ -113,11 +113,12 @@ test('the documented Hebrew PDF evaluation fixture remains extractable', async (
   assert.equal(output.sources.length, 9);
   assert.match(output.sources[0].text, /צוות/);
 });
-test('lesson functions include PDF.js native canvas dependencies in Vercel', async () => {
+test('lesson functions include the PDF worker and Linux canvas runtime files in Vercel', async () => {
   const config = JSON.parse(
     await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
   );
   assert.deepEqual(config.functions['api/lesson/*.js'].includeFiles, [
+    'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
     'node_modules/@napi-rs/canvas/**',
     'node_modules/@napi-rs/canvas-linux-x64-gnu/**',
   ]);
@@ -144,6 +145,18 @@ test('empty document is rejected', async () => {
         buffer: Buffer.from('  '),
       }),
     { code: 'EMPTY_DOCUMENT' }
+  );
+});
+test('corrupted PDFs return a safe extraction error', async () => {
+  await assert.rejects(
+    () =>
+      processDocument({
+        originalname: 'corrupted.pdf',
+        mimetype: 'application/pdf',
+        size: 8,
+        buffer: Buffer.from('not a pdf'),
+      }),
+    { code: 'PDF_EXTRACTION_FAILED' }
   );
 });
 test('extractable document text is bounded before duplicating it into lesson state', async () => {

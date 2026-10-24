@@ -1,10 +1,9 @@
-import { createRequire } from 'node:module';
+import { PDFParse } from 'pdf-parse';
 
 import { appConfig } from '../config/index.js';
 import { ApiError } from '../errors.js';
 import { logStage } from '../logger.js';
 
-const require = createRequire(import.meta.url);
 const SUPPORTED = new Set(['text/plain', 'application/pdf']);
 
 function chunksFor(text, page) {
@@ -50,9 +49,6 @@ export async function processDocument(
     let parser;
     try {
       logStage(context, 'PDF_PARSING_STARTED');
-      // Initialize the PDF worker for serverless environments.
-      require('pdf-parse/worker');
-      const { PDFParse } = require('pdf-parse');
       parser = new PDFParse({
         data: file.buffer,
       });
@@ -126,8 +122,7 @@ export async function processDocument(
   }
 
   if (
-    Buffer.byteLength(raw, 'utf8') >
-    appConfig.document.maxExtractedTextBytes
+    Buffer.byteLength(raw, 'utf8') > appConfig.document.maxExtractedTextBytes
   ) {
     throw new ApiError(
       413,
@@ -154,4 +149,3 @@ export async function processDocument(
     coverage: `All extractable text was chunked. Files are limited to ${appConfig.document.maxFileBytes} bytes.`,
   };
 }
-
