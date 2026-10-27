@@ -106,13 +106,22 @@ export async function chatLesson(req, res) {
     if (controller.signal.aborted) {
       return res.end();
     }
+    const updated = applyEvaluation(state, result);
+    // Once understanding is validated, generate the reply from the same step
+    // that will be reported to the client. This keeps the tutor's question,
+    // source context, and progress indicator in sync.
+    const responseState = result.shouldAdvance ? updated : state;
+    const responseSources = sourcesForStep(
+      responseState.sources,
+      responseState.plan.steps[responseState.currentStep]
+    );
     const stream = streamTutorMessage({
-      state,
+      state: responseState,
       message: input.message,
       history: input.conversationHistory,
       apiKey,
       model: input.model,
-      sources,
+      sources: responseSources,
       start: input.start,
       evaluation: result,
       signal: controller.signal,
@@ -129,8 +138,11 @@ export async function chatLesson(req, res) {
     if (controller.signal.aborted) {
       return res.end();
     }
-    event(res, 'sources', { sourceIds: result.sourceIds });
-    const updated = applyEvaluation(state, result);
+    event(res, 'sources', {
+      sourceIds: result.shouldAdvance
+        ? responseSources.map((source) => source.id)
+        : result.sourceIds,
+    });
     logStage(context, 'PROGRESS_UPDATE_COMPLETED', {
       status: updated.status,
       currentStep: updated.currentStep,
